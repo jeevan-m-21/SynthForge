@@ -1,0 +1,20 @@
+﻿# MediSynth.AI - Dependencies
+# Core
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+python-multipart==0.0.9
+aiofiles==24.1.0
+pydantic==2.9.0
+
+# ML & Data
+pandas==2.2.0
+numpy==1.26.4
+scipy==1.13.0
+scikit-learn==1.5.0
+torch>=2.0.0
+
+# Synthetic Data Generation
+sdv==1.17.0
+
+# Utilities
+python-dateutil==2.9.0

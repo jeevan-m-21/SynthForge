@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="MediSynth.AI — Privacy-Preserving Synthetic Healthcare Data Generation Platform with Differential Privacy, Federated Learning, and Attack Resistance Validation.">
+  <title>MediSynth.AI — Synthetic Healthcare Data Platform</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app-container">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="logo">
+      <div class="logo-icon">🧬</div>
+      <div class="logo-text"><span>Medi</span>Synth.AI</div>
+    </div>
+    <div class="header-badge">● System Online</div>
+  </header>
+
+  <!-- Navigation -->
+  <nav class="nav-tabs">
+    <button class="nav-tab active" data-tab="tab-upload"><span class="tab-icon">📁</span> Data Upload</button>
+    <button class="nav-tab" data-tab="tab-generate"><span class="tab-icon">⚙️</span> Generate</button>
+    <button class="nav-tab" data-tab="tab-privacy"><span class="tab-icon">🔐</span> Privacy Budget</button>
+    <button class="nav-tab" data-tab="tab-statistical"><span class="tab-icon">📊</span> Statistical</button>
+    <button class="nav-tab" data-tab="tab-ml"><span class="tab-icon">🤖</span> ML Utility</button>
+    <button class="nav-tab" data-tab="tab-attacks"><span class="tab-icon">🛡️</span> Attack Resistance</button>
+    <button class="nav-tab" data-tab="tab-federation"><span class="tab-icon">🏥</span> Federation</button>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- Tab: Upload -->
+    <div id="tab-upload" class="tab-content active">
+      <h2 class="section-title">📁 Data Upload</h2>
+      <p class="section-subtitle">Upload your healthcare CSV dataset or load the built-in sample data to get started.</p>
+      <div class="grid grid-2">
+        <div class="card">
+          <div id="upload-zone" class="upload-zone">
+            <div class="upload-icon">📂</div>
+            <div class="upload-text">Drag & drop your <strong>CSV file</strong> here<br>or click to browse</div>
+            <input type="file" id="file-input" accept=".csv">
+          </div>
+        </div>
+        <div class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <div style="text-align:center">
+            <div style="font-size:3rem;margin-bottom:1rem">🏥</div>
+            <h3 style="margin-bottom:0.5rem">Sample Healthcare Data</h3>
+            <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1.5rem">1,000 realistic patient records with vitals, diagnoses, and risk factors</p>
+            <button class="btn btn-primary" onclick="loadSampleData()">Load Sample Dataset</button>
+          </div>
+        </div>
+      </div>
+      <div id="dataset-status"></div>
+    </div>
+
+    <!-- Tab: Generate -->
+    <div id="tab-generate" class="tab-content">
+      <h2 class="section-title">⚙️ Synthetic Data Generation</h2>
+      <p class="section-subtitle">Configure the generative model and differential privacy parameters.</p>
+      <div class="card">
+        <div class="card-title">🧬 Generation Settings</div>
+        <input type="hidden" id="gen-dataset-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Number of Rows</label>
+            <input type="number" id="gen-rows" class="form-input" value="1000" min="10" max="100000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Model Type</label>
+            <select id="gen-model" class="form-select" onchange="updateModelHint()">
+              <option value="statistical">Statistical (Fast — ~1 second)</option>
+              <option value="ctgan">CTGAN (Deep Learning — 2-10 min on CPU)</option>
+              <option value="tvae">TVAE (Deep Learning — 1-5 min on CPU)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Epochs <span id="epoch-hint" style="color:var(--text-muted);font-weight:400">(ignored for Statistical)</span></label>
+            <input type="number" id="gen-epochs" class="form-input" value="50" min="1" max="500">
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="card-title">🔐 Differential Privacy</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">ε (Epsilon) — lower = more private</label>
+            <input type="number" id="gen-epsilon" class="form-input" value="1.0" min="0.01" max="100" step="0.1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">δ (Delta)</label>
+            <input type="number" id="gen-delta" class="form-input" value="0.00001" min="0.0000001" max="0.1" step="0.00001">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mechanism</label>
+            <select id="gen-mechanism" class="form-select">
+              <option value="gaussian">Gaussian (ε,δ)-DP</option>
+              <option value="laplace">Laplace (ε)-DP</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="gen-apply-dp" checked style="width:18px;height:18px;accent-color:var(--accent-blue)">
+            <span class="form-label" style="margin:0">Apply Differential Privacy</span>
+          </label>
+        </div>
+        <button class="btn btn-primary" onclick="generateData()" style="margin-top:1rem">🚀 Generate Synthetic Data</button>
+      </div>
+      <div id="gen-result"></div>
+    </div>
+
+    <!-- Tab: Privacy Budget -->
+    <div id="tab-privacy" class="tab-content">
+      <h2 class="section-title">🔐 Privacy Budget Dashboard</h2>
+      <p class="section-subtitle">Track cumulative privacy expenditure (ε) across all generation queries for each dataset.</p>
+      <div id="privacy-content">
+        <div class="empty-state"><div class="empty-icon">🔐</div><p>Upload data and generate synthetic data to see privacy budget tracking</p></div>
+      </div>
+    </div>
+
+    <!-- Tab: Statistical -->
+    <div id="tab-statistical" class="tab-content">
+      <h2 class="section-title">📊 Statistical Similarity Validation</h2>
+      <p class="section-subtitle">Prove synthetic data quality with KS tests, mean/variance comparison, and correlation analysis.</p>
+      <button class="btn btn-primary" onclick="runStatValidation()">Run Statistical Validation</button>
+      <div id="stat-results" style="margin-top:1.5rem"></div>
+    </div>
+
+    <!-- Tab: ML Utility -->
+    <div id="tab-ml" class="tab-content">
+      <h2 class="section-title">🤖 Machine Learning Utility Validation</h2>
+      <p class="section-subtitle">TSTR benchmark: Train on Real vs Train on Synthetic, test on Real.</p>
+      <div class="card">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Target Column (auto-detected if blank)</label>
+            <input type="text" id="ml-target" class="form-input" placeholder="e.g. heart_disease">
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end">
+            <button class="btn btn-primary" onclick="runMLValidation()">Run ML Validation</button>
+          </div>
+        </div>
+      </div>
+      <div id="ml-results" style="margin-top:1.5rem"></div>
+    </div>
+
+    <!-- Tab: Attacks -->
+    <div id="tab-attacks" class="tab-content">
+      <h2 class="section-title">🛡️ Privacy Attack Simulation</h2>
+      <p class="section-subtitle">Simulate membership inference, re-identification, and attribute inference attacks.</p>
+      <button class="btn btn-danger" onclick="runAttacks()">🔓 Simulate Attacks</button>
+      <div id="attack-results" style="margin-top:1.5rem"></div>
+    </div>
+
+    <!-- Tab: Federation -->
+    <div id="tab-federation" class="tab-content">
+      <h2 class="section-title">🏥 Multi-Hospital Federation</h2>
+      <p class="section-subtitle">Federated learning: each hospital trains locally, shares only model updates — never raw data.</p>
+      <div class="card">
+        <div class="card-title">🌐 Create Federation</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Training Rounds</label>
+            <input type="number" id="fed-rounds" class="form-input" value="5" min="1" max="50">
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end">
+            <button class="btn btn-primary" onclick="createFederation()">Create Federation</button>
+          </div>
+        </div>
+      </div>
+      <div id="fed-controls" style="display:none">
+        <div class="card">
+          <div class="card-title">🏥 Federation: <span id="fed-id-display" style="color:var(--accent-cyan)"></span></div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Hospital Name</label>
+              <input type="text" id="fed-hospital-name" class="form-input" placeholder="City General">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hospital CSV Data</label>
+              <input type="file" id="fed-hospital-file" class="form-input" accept=".csv">
+            </div>
+            <div class="form-group" style="display:flex;align-items:flex-end">
+              <button class="btn btn-secondary" onclick="addHospital()">+ Add Hospital</button>
+            </div>
+          </div>
+          <div id="fed-hospital-list" class="grid grid-4" style="margin-top:1rem"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">🧠 Federated Training</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">DP Epsilon for Updates</label>
+              <input type="number" id="fed-epsilon" class="form-input" value="1.0" min="0.01" step="0.1">
+            </div>
+            <div class="form-group" style="display:flex;align-items:flex-end;gap:8px">
+              <button class="btn btn-primary" onclick="runFederatedTraining()">🚀 Train</button>
+            </div>
+          </div>
+        </div>
+        <div id="fed-results"></div>
+        <div class="card">
+          <div class="card-title">📊 Generate from Federation</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Rows to Generate</label>
+              <input type="number" id="fed-gen-rows" class="form-input" value="1000">
+            </div>
+            <div class="form-group" style="display:flex;align-items:flex-end">
+              <button class="btn btn-success" onclick="federatedGenerate()">Generate</button>
+            </div>
+          </div>
+        </div>
+        <div id="fed-gen-result"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loading-overlay" class="loading-overlay" style="display:none">
+  <div style="text-align:center">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loading-text">Processing...</div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container" class="toast-container"></div>
+
+<script src="/static/js/api.js"></script>
+<script src="/static/js/charts.js"></script>
+<script src="/static/js/app.js"></script>
+</body>
+</html>
