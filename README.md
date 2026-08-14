@@ -1,4 +1,4 @@
-﻿# MediSynth.AI
+﻿# SynthForge
 
 **Privacy-Preserving Synthetic Healthcare Data Generation Platform**
 
