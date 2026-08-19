@@ -1,8 +1,8 @@
 ﻿# SynthForge
 
-**Privacy-Preserving Synthetic Healthcare Data Generation Platform**
+**Privacy-Preserving Synthetic Tabular Data Platform**
 
-A production-ready system for generating high-quality synthetic healthcare data with formal differential privacy guarantees, multi-hospital federated learning, and comprehensive privacy attack resistance.
+A production-ready system for generating high-quality synthetic tabular data with differential privacy, privacy analysis, statistical validation, ML utility evaluation, federated learning, and privacy attack resistance. Healthcare remains the initial demonstration domain.
 
 ## Quick Start
 

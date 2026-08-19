@@ -1,6 +1,6 @@
 ﻿"""
 MediSynth.AI — FastAPI Application Entry Point
-Privacy-Preserving Synthetic Healthcare Data Generation Platform
+Privacy-Preserving Synthetic Tabular Data Platform
 """
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -25,9 +25,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="MediSynth.AI",
     description=(
-        "Privacy-Preserving Synthetic Healthcare Data Generation Platform. "
-        "Generate HIPAA/GDPR-compliant synthetic data with differential privacy "
-        "guarantees, federated learning, and comprehensive privacy validation."
+        "Privacy-Preserving Synthetic Tabular Data Platform. "
+        "Generate synthetic data with differential privacy, privacy analysis, "
+        "statistical validation, ML utility evaluation, federated learning, "
+        "and privacy attack simulation."
     ),
     version="1.0.0",
     lifespan=lifespan,
@@ -57,7 +58,7 @@ async def serve_frontend():
     if index_path.exists():
         return FileResponse(str(index_path))
     return {
-        "message": "MediSynth.AI API",
+        "message": "Privacy-Preserving Synthetic Data Platform API",
         "docs": "/docs",
         "version": "1.0.0",
     }

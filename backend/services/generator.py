@@ -17,6 +17,7 @@ from backend.services.privacy_engine import (
     DPDataProcessor, PrivacyParams, PrivacyBudgetManager
 )
 from backend.services.data_service import load_dataset
+from backend.services.schema_intelligence import drop_identifier_columns
 from backend.utils.logging_config import get_logger, audit_log
 from backend.utils.security import generate_job_id
 from backend.models.database import create_job, update_job
@@ -195,10 +196,8 @@ def generate_synthetic_data(
         if real_df is None:
             raise ValueError(f"Dataset {dataset_id} not found")
 
-        # Remove ID columns
-        id_cols = [c for c in real_df.columns
-                   if c.lower() in ["id", "patient_id", "record_id", "index"]]
-        working_df = real_df.drop(columns=id_cols, errors="ignore")
+        # Remove identifier-like columns with shared generic heuristics.
+        working_df = drop_identifier_columns(real_df)
 
         # Step 2: Check privacy budget
         if apply_dp:
