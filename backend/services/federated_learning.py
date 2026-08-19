@@ -1,6 +1,6 @@
 ﻿"""
 MediSynth.AI — Federated Learning Orchestrator
-Implements FedAvg for multi-hospital synthetic data generation
+Implements FedAvg for collaborative tabular synthetic data generation
 without sharing raw data.
 
 Key Properties:
@@ -26,7 +26,7 @@ logger = get_logger("federated_learning")
 
 @dataclass
 class HospitalNode:
-    """Represents a single hospital in the federation."""
+    """Represents a single participant in the federation."""
     hospital_id: str
     name: str
     num_records: int = 0
@@ -35,7 +35,7 @@ class HospitalNode:
     _data: Optional[pd.DataFrame] = None
 
     def set_data(self, df: pd.DataFrame):
-        """Store hospital data (stays local, never transmitted)."""
+        """Store participant data locally (never transmitted)."""
         self._data = df
         self.num_records = len(df)
         self.columns = list(df.columns)
@@ -279,7 +279,7 @@ class FederationManager:
     @classmethod
     def add_hospital(cls, federation_id: str, hospital_id: str,
                      name: str, data: pd.DataFrame) -> Dict:
-        """Add a hospital's data to the federation."""
+        """Add a participant's data to the federation."""
         fed = cls._federations.get(federation_id)
         if not fed:
             raise ValueError(f"Federation {federation_id} not found")
@@ -288,7 +288,7 @@ class FederationManager:
         node.set_data(data)
         fed.hospitals[hospital_id] = node
 
-        audit_log(logger, "hospital_added", {
+        audit_log(logger, "participant_added", {
             "federation_id": federation_id,
             "hospital_id": hospital_id,
             "records": len(data),
@@ -305,7 +305,7 @@ class FederationManager:
         apply_dp_to_updates: bool = True,
     ) -> Dict:
         """
-        Execute federated training across all hospitals.
+        Execute federated training across all participants.
 
         1. Each hospital trains a local model on its own data
         2. Model parameters (NOT data) are extracted
@@ -320,10 +320,10 @@ class FederationManager:
             raise ValueError(f"Federation {federation_id} not found")
 
         if len(fed.hospitals) < 2:
-            raise ValueError("Need at least 2 hospitals for federated learning")
+            raise ValueError("Need at least 2 participants for federated learning")
 
         fed.status = "training"
-        logger.info(f"Starting federated training with {len(fed.hospitals)} hospitals")
+        logger.info(f"Starting federated training with {len(fed.hospitals)} participants")
 
         # Compute DP noise level
         dp_sigma = 0.0
@@ -336,7 +336,7 @@ class FederationManager:
             local_params = []
             weights = []
 
-            # Step 1: Local training at each hospital
+            # Step 1: Local training at each participant
             for hosp_id, node in fed.hospitals.items():
                 data = node.get_data()
                 if data is None or len(data) == 0:
@@ -352,7 +352,7 @@ class FederationManager:
                 local_params.append(params)
                 weights.append(node.num_records)
 
-                logger.info(f"  Hospital {node.name}: trained on {node.num_records} records")
+                logger.info(f"  Participant {node.name}: trained on {node.num_records} records")
 
             if not local_params:
                 raise ValueError("No hospitals provided valid data")

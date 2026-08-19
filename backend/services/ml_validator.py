@@ -15,6 +15,7 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 from backend.config import ML_TEST_SPLIT, ML_RANDOM_STATE, ML_N_ESTIMATORS
 from backend.utils.logging_config import get_logger
+from backend.services.schema_intelligence import detect_target_column, drop_identifier_columns
 
 logger = get_logger("ml_validator")
 
@@ -122,26 +123,7 @@ def _train_and_evaluate(X_train, y_train, X_test, y_test,
 
 def _auto_detect_target(df: pd.DataFrame) -> Optional[str]:
     """Auto-detect a suitable target column for classification."""
-    # Look for common healthcare target columns
-    priority_targets = [
-        "heart_disease", "diabetes", "hypertension", "diagnosis",
-        "outcome", "target", "label", "class", "disease",
-        "readmission", "mortality", "stroke",
-    ]
-    for target in priority_targets:
-        for col in df.columns:
-            if col.lower() == target.lower():
-                return col
-
-    # Fallback: find binary/low-cardinality columns
-    for col in df.columns:
-        if df[col].nunique() == 2:
-            return col
-    for col in df.columns:
-        if 2 < df[col].nunique() <= 10:
-            return col
-
-    return None
+    return detect_target_column(df)
 
 
 def validate_ml_utility(real_df: pd.DataFrame, synth_df: pd.DataFrame,
@@ -173,6 +155,13 @@ def validate_ml_utility(real_df: pd.DataFrame, synth_df: pd.DataFrame,
     common_cols = [c for c in real_df.columns if c in synth_df.columns]
     real = real_df[common_cols].copy()
     synth = synth_df[common_cols].copy()
+
+    real = drop_identifier_columns(real)
+    synth = drop_identifier_columns(synth)
+
+    if target_col is not None and target_col not in real.columns and target_col in real_df.columns:
+        real[target_col] = real_df[target_col]
+        synth[target_col] = synth_df[target_col]
 
     # Prepare data
     try:

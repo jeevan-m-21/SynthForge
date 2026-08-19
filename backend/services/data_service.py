@@ -11,6 +11,7 @@ from backend.config import UPLOAD_DIR
 from backend.utils.logging_config import get_logger, audit_log
 from backend.utils.security import generate_dataset_id, compute_data_fingerprint
 from backend.models.database import register_dataset, datasets_store
+from backend.services.schema_intelligence import get_identifier_columns
 
 logger = get_logger("data_service")
 
@@ -77,13 +78,8 @@ def ingest_csv(file_content: bytes, filename: str) -> Dict:
     # Parse CSV
     df = pd.read_csv(filepath)
 
-    # Drop ID-like columns (single unique values per row)
-    id_cols = []
-    for col in df.columns:
-        if df[col].nunique() == len(df) and df[col].dtype == "object":
-            id_cols.append(col)
-        elif col.lower() in ["id", "patient_id", "record_id", "index"]:
-            id_cols.append(col)
+    # Detect identifier-like columns using shared generic heuristics.
+    id_cols = get_identifier_columns(df)
 
     # Detect types
     column_types = detect_column_types(df)

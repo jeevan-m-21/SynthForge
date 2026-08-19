@@ -9,6 +9,7 @@ from scipy import stats as scipy_stats
 from typing import Dict, List, Tuple
 
 from backend.utils.logging_config import get_logger
+from backend.services.schema_intelligence import drop_identifier_columns
 
 logger = get_logger("statistical_validator")
 
@@ -170,6 +171,11 @@ def validate_statistical(real_df: pd.DataFrame,
     common_cols = [c for c in real_df.columns if c in synth_df.columns]
     real = real_df[common_cols]
     synth = synth_df[common_cols]
+
+    real = drop_identifier_columns(real)
+    synth = drop_identifier_columns(synth)
+
+    common_cols = [c for c in real.columns if c in synth.columns]
 
     numeric_cols = real.select_dtypes(include=[np.number]).columns.tolist()
     cat_cols = real.select_dtypes(include=["object", "category"]).columns.tolist()

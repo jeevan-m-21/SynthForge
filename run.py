@@ -13,7 +13,7 @@ def main():
 
     print("\n" + "=" * 60)
     print("  MediSynth.AI -- Starting Up")
-    print("  Privacy-Preserving Synthetic Healthcare Data Platform")
+    print("  Privacy-Preserving Synthetic Data Platform")
     print("=" * 60 + "\n")
 
     # Install dependencies
@@ -35,7 +35,7 @@ def main():
     from backend.config import DATA_DIR
     sample_path = DATA_DIR / "sample" / "healthcare_data.csv"
     if not sample_path.exists():
-        print("[*] Generating sample healthcare dataset...")
+        print("[*] Generating sample tabular dataset...")
         _generate_sample(sample_path)
         print(f"    Created {sample_path}")
 
