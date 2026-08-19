@@ -99,7 +99,9 @@ def is_identifier_column(
 
     if pd.api.types.is_object_dtype(series) or pd.api.types.is_string_dtype(series):
         sample = clean.astype(str).head(25)
-        if len(sample) > 0 and sample.str.match(r"^[0-9a-fA-F-]{8,}$").mean() >= 0.6:
+        uuid_pat = r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        hex_pat = r"^[0-9a-fA-F]{16,}$"
+        if len(sample) > 0 and (sample.str.match(uuid_pat).mean() >= 0.6 or sample.str.match(hex_pat).mean() >= 0.6):
             return True
 
     return False

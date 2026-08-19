@@ -22,6 +22,7 @@ from backend.services.statistical_validator import validate_statistical
 from backend.services.ml_validator import validate_ml_utility
 from backend.services.attack_simulator import run_all_attacks
 from backend.services.schema_intelligence import drop_identifier_columns
+from backend.services.dataset_profiler import profile_dataframe
 from backend.services.privacy_engine import PrivacyBudgetManager
 from backend.services.federated_learning import FederationManager
 from backend.models.database import (
@@ -70,6 +71,32 @@ async def upload_data(file: UploadFile = File(...)):
         return sanitize({"status": "success", "data": result})
     except Exception as e:
         raise HTTPException(500, f"Failed to process file: {str(e)}")
+
+
+@router.post("/data/profile")
+async def profile_data(file: UploadFile = File(...)):
+    """Profile an uploaded CSV file and return DatasetProfile JSON without persisting raw data."""
+    if not file.filename or not file.filename.endswith(".csv"):
+        raise HTTPException(400, "Only CSV files are supported")
+
+    content = await file.read()
+    if len(content) == 0:
+        raise HTTPException(400, "Empty file")
+
+    try:
+        df = pd.read_csv(io.BytesIO(content))
+    except Exception as e:
+        raise HTTPException(400, f"Failed to parse CSV file: {str(e)}")
+
+    if df.empty or len(df.columns) == 0:
+        raise HTTPException(400, "CSV dataset contains no data or columns to profile")
+
+    try:
+        profile = profile_dataframe(df, dataset_name=file.filename)
+        profile_dict = profile.model_dump() if hasattr(profile, "model_dump") else profile.dict()
+        return sanitize({"status": "success", "data": profile_dict})
+    except Exception as e:
+        raise HTTPException(500, f"Failed to profile dataset: {str(e)}")
 
 
 @router.get("/data/list")
