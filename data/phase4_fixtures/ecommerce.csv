@@ -1,0 +1,51 @@
+order_id,customer_id,category,unit_price,quantity,is_prime_member,order_timestamp,customer_review,discount_code,delivery_days,returned
+ORD-1000,CUST-500,Books,128.09,3,True,2024-01-01 09:00:00,Super fast delivery and premium materials used.,,2.0,0
+ORD-1001,CUST-501,Beauty & Personal Care,344.79,1,True,2024-01-01 13:30:00,Item arrived damaged and packaging was poor.,,2.0,0
+ORD-1002,CUST-502,Home & Kitchen,308.89,3,True,2024-01-01 18:00:00,"Not satisfied with the performance, returning immediately.",FLASH50,2.0,0
+ORD-1003,CUST-503,Beauty & Personal Care,418.26,5,True,2024-01-01 22:30:00,"Great quality product, fast shipping!",SPRING20,2.0,1
+ORD-1004,CUST-504,Beauty & Personal Care,94.94,3,False,2024-01-02 03:00:00,"Decent value for money, exactly as described.",,5.0,0
+ORD-1005,CUST-505,Apparel,201.61,1,True,2024-01-02 07:30:00,"Exceeded my expectations, will definitely buy again.",,,0
+ORD-1006,CUST-506,Home & Kitchen,99.29,5,True,2024-01-02 12:00:00,"Great quality product, fast shipping!",SAVE10,1.0,0
+ORD-1007,CUST-507,Home & Kitchen,380.12,2,True,2024-01-02 16:30:00,"Great quality product, fast shipping!",SPRING20,2.0,0
+ORD-1008,CUST-508,Home & Kitchen,218.32,3,True,2024-01-02 21:00:00,Item arrived damaged and packaging was poor.,SPRING20,3.0,0
+ORD-1009,CUST-509,Beauty & Personal Care,111.88,1,True,2024-01-03 01:30:00,Super fast delivery and premium materials used.,SPRING20,2.0,0
+ORD-1010,CUST-510,Books,288.16,2,True,2024-01-03 06:00:00,Super fast delivery and premium materials used.,,2.0,0
+ORD-1011,CUST-511,Home & Kitchen,25.33,2,True,2024-01-03 10:30:00,"Average build quality, works okay for basic tasks.",SAVE10,2.0,0
+ORD-1012,CUST-512,Beauty & Personal Care,422.71,4,True,2024-01-03 15:00:00,Item arrived damaged and packaging was poor.,SAVE10,2.0,0
+ORD-1013,CUST-513,Apparel,230.37,5,True,2024-01-03 19:30:00,"Decent value for money, exactly as described.",SPRING20,5.0,0
+ORD-1014,CUST-514,Books,203.61,3,False,2024-01-04 00:00:00,Super fast delivery and premium materials used.,SAVE10,1.0,0
+ORD-1015,CUST-515,Apparel,464.05,1,False,2024-01-04 04:30:00,"Exceeded my expectations, will definitely buy again.",SPRING20,3.0,1
+ORD-1016,CUST-516,Books,366.35,4,True,2024-01-04 09:00:00,"Not satisfied with the performance, returning immediately.",,2.0,0
+ORD-1017,CUST-517,Beauty & Personal Care,169.99,5,False,2024-01-04 13:30:00,Item arrived damaged and packaging was poor.,,2.0,0
+ORD-1018,CUST-518,Electronics,289.51,4,True,2024-01-04 18:00:00,"Not satisfied with the performance, returning immediately.",SPRING20,2.0,0
+ORD-1019,CUST-519,Books,265.2,5,False,2024-01-04 22:30:00,"Great quality product, fast shipping!",FLASH50,2.0,0
+ORD-1020,CUST-520,Apparel,480.96,5,True,2024-01-05 03:00:00,"Exceeded my expectations, will definitely buy again.",FLASH50,3.0,1
+ORD-1021,CUST-521,Beauty & Personal Care,423.81,3,True,2024-01-05 07:30:00,"Exceeded my expectations, will definitely buy again.",,1.0,0
+ORD-1022,CUST-522,Books,376.18,5,True,2024-01-05 12:00:00,"Great quality product, fast shipping!",SAVE10,1.0,0
+ORD-1023,CUST-523,Electronics,274.44,4,False,2024-01-05 16:30:00,Item arrived damaged and packaging was poor.,FLASH50,3.0,0
+ORD-1024,CUST-524,Electronics,297.5,5,False,2024-01-05 21:00:00,"Great quality product, fast shipping!",,1.0,0
+ORD-1025,CUST-525,Home & Kitchen,482.97,3,True,2024-01-06 01:30:00,"Not satisfied with the performance, returning immediately.",SPRING20,1.0,0
+ORD-1026,CUST-526,Home & Kitchen,307.44,3,True,2024-01-06 06:00:00,"Average build quality, works okay for basic tasks.",,2.0,0
+ORD-1027,CUST-527,Apparel,145.23,4,True,2024-01-06 10:30:00,"Exceeded my expectations, will definitely buy again.",SPRING20,1.0,0
+ORD-1028,CUST-528,Books,155.16,2,True,2024-01-06 15:00:00,Customer service was unhelpful and return process was slow.,SPRING20,5.0,0
+ORD-1029,CUST-529,Books,90.97,2,True,2024-01-06 19:30:00,Customer service was unhelpful and return process was slow.,,1.0,0
+ORD-1030,CUST-530,Home & Kitchen,17.65,5,True,2024-01-07 00:00:00,"Not satisfied with the performance, returning immediately.",,2.0,0
+ORD-1031,CUST-531,Books,217.46,1,True,2024-01-07 04:30:00,"Decent value for money, exactly as described.",,2.0,0
+ORD-1032,CUST-532,Books,203.48,5,False,2024-01-07 09:00:00,Super fast delivery and premium materials used.,SAVE10,3.0,0
+ORD-1033,CUST-533,Electronics,153.8,4,True,2024-01-07 13:30:00,"Great quality product, fast shipping!",SPRING20,2.0,0
+ORD-1034,CUST-534,Home & Kitchen,16.89,4,False,2024-01-07 18:00:00,"Great quality product, fast shipping!",FLASH50,1.0,1
+ORD-1035,CUST-500,Beauty & Personal Care,107.42,4,True,2024-01-07 22:30:00,"Decent value for money, exactly as described.",,,0
+ORD-1036,CUST-501,Home & Kitchen,358.55,4,False,2024-01-08 03:00:00,"Decent value for money, exactly as described.",SAVE10,5.0,0
+ORD-1037,CUST-502,Beauty & Personal Care,397.18,4,False,2024-01-08 07:30:00,"Not satisfied with the performance, returning immediately.",,5.0,0
+ORD-1038,CUST-503,Electronics,306.91,3,True,2024-01-08 12:00:00,"Not satisfied with the performance, returning immediately.",SPRING20,2.0,0
+ORD-1039,CUST-504,Apparel,463.88,2,True,2024-01-08 16:30:00,"Decent value for money, exactly as described.",SAVE10,1.0,0
+ORD-1040,CUST-505,Books,329.02,4,False,2024-01-08 21:00:00,"Exceeded my expectations, will definitely buy again.",,2.0,0
+ORD-1041,CUST-506,Electronics,458.32,1,False,2024-01-09 01:30:00,"Not satisfied with the performance, returning immediately.",,2.0,0
+ORD-1042,CUST-507,Books,426.51,1,True,2024-01-09 06:00:00,"Average build quality, works okay for basic tasks.",,2.0,0
+ORD-1043,CUST-508,Apparel,230.22,1,True,2024-01-09 10:30:00,"Not satisfied with the performance, returning immediately.",SPRING20,5.0,1
+ORD-1044,CUST-509,Apparel,56.74,1,False,2024-01-09 15:00:00,"Great quality product, fast shipping!",FLASH50,2.0,1
+ORD-1045,CUST-510,Electronics,191.69,3,False,2024-01-09 19:30:00,"Not satisfied with the performance, returning immediately.",FLASH50,,0
+ORD-1046,CUST-511,Apparel,337.72,1,True,2024-01-10 00:00:00,"Exceeded my expectations, will definitely buy again.",,2.0,0
+ORD-1047,CUST-512,Beauty & Personal Care,336.29,4,True,2024-01-10 04:30:00,"Decent value for money, exactly as described.",SAVE10,5.0,1
+ORD-1048,CUST-513,Apparel,299.73,5,False,2024-01-10 09:00:00,"Great quality product, fast shipping!",SPRING20,1.0,0
+ORD-1049,CUST-514,Books,144.6,1,True,2024-01-10 13:30:00,"Not satisfied with the performance, returning immediately.",SAVE10,2.0,0

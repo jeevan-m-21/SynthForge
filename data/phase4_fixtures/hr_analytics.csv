@@ -1,0 +1,61 @@
+employee_id,job_title,department,salary,years_of_experience,performance_rating,is_manager,company_hq,hire_date,exit_notes,attrition
+EMP-100,Marketing Specialist,Operations,74065,1.2,1,False,New York,2015-01-15,Pursuing higher education full-time.,0
+EMP-101,Lead DevOps Engineer,Engineering,138460,19.4,5,False,New York,2015-03-01,,0
+EMP-102,Database Administrator,Engineering,143092,1.8,5,False,New York,2015-04-15,,0
+EMP-103,Database Administrator,Operations,109693,17.9,3,False,New York,2015-05-30,Employee relocated to another city for family reasons.,0
+EMP-104,Junior Frontend Developer,Finance,81962,11.0,5,False,New York,2015-07-14,,0
+EMP-105,Site Reliability Engineer,Engineering,83295,19.9,5,False,New York,2015-08-28,Pursuing higher education full-time.,0
+EMP-106,Director of Product,Operations,68807,2.4,5,False,New York,2015-10-12,,0
+EMP-107,Principal Security Analyst,Marketing,97348,11.5,5,False,New York,2015-11-26,Career transition to another industry.,0
+EMP-108,Machine Learning Specialist,Human Resources,81432,19.4,2,True,New York,2016-01-10,,1
+EMP-109,Staff Data Architect,Human Resources,138285,10.9,2,True,New York,2016-02-24,,0
+EMP-110,Senior Software Engineer,Engineering,161995,13.0,3,True,New York,2016-04-09,,1
+EMP-111,Senior Software Engineer,Finance,146792,14.2,1,True,New York,2016-05-24,,0
+EMP-112,Business Intelligence Analyst,Finance,112854,9.6,5,True,New York,2016-07-08,,0
+EMP-113,UX Designer,Marketing,95262,12.9,1,True,New York,2016-08-22,Left for higher compensation and promotion opportunity.,0
+EMP-114,Product Manager,Engineering,92080,12.1,1,False,New York,2016-10-06,,0
+EMP-115,Principal Security Analyst,Human Resources,56324,18.1,3,True,New York,2016-11-20,,0
+EMP-116,Staff Data Architect,Finance,146267,1.9,5,False,New York,2017-01-04,,0
+EMP-117,Senior Software Engineer,Engineering,90909,6.3,5,False,New York,2017-02-18,,0
+EMP-118,Senior Software Engineer,Finance,144339,19.1,4,False,New York,2017-04-04,Career transition to another industry.,1
+EMP-119,HR Business Partner,Operations,74870,17.9,1,False,New York,2017-05-19,,1
+EMP-120,Senior Accounting Manager,Finance,89578,9.7,1,True,New York,2017-07-03,,1
+EMP-121,UX Designer,Human Resources,127124,12.8,2,True,New York,2017-08-17,,0
+EMP-122,Principal Security Analyst,Product,172611,6.3,4,True,New York,2017-10-01,,0
+EMP-123,Marketing Specialist,Marketing,158605,4.6,2,True,New York,2017-11-15,,1
+EMP-124,Principal Security Analyst,Marketing,81790,9.8,2,False,New York,2017-12-30,,0
+EMP-125,Customer Success Lead,Human Resources,173874,7.7,2,True,New York,2018-02-13,,0
+EMP-126,Junior Frontend Developer,Finance,80289,12.1,3,True,New York,2018-03-30,Pursuing higher education full-time.,0
+EMP-127,Business Intelligence Analyst,Engineering,110129,2.5,3,True,New York,2018-05-14,Career transition to another industry.,0
+EMP-128,Machine Learning Specialist,Finance,148714,19.5,2,False,New York,2018-06-28,Expressed dissatisfaction with work-life balance.,1
+EMP-129,Staff Data Architect,Human Resources,149246,19.7,4,True,New York,2018-08-12,Pursuing higher education full-time.,0
+EMP-130,Site Reliability Engineer,Marketing,70485,14.3,1,False,New York,2018-09-26,Expressed dissatisfaction with work-life balance.,0
+EMP-131,HR Business Partner,Finance,99482,11.2,4,False,New York,2018-11-10,Expressed dissatisfaction with work-life balance.,0
+EMP-132,Senior Accounting Manager,Marketing,141188,6.9,5,False,New York,2018-12-25,,0
+EMP-133,Junior Frontend Developer,Engineering,59748,16.5,3,True,New York,2019-02-08,Expressed dissatisfaction with work-life balance.,0
+EMP-134,Business Intelligence Analyst,Marketing,141769,14.0,1,False,New York,2019-03-25,,1
+EMP-135,Financial Analyst,Marketing,64435,4.1,1,False,New York,2019-05-09,Left for higher compensation and promotion opportunity.,0
+EMP-136,Technical Recruiter,Product,58709,18.3,5,True,New York,2019-06-23,,0
+EMP-137,Lead DevOps Engineer,Product,85355,16.6,5,False,New York,2019-08-07,,0
+EMP-138,Machine Learning Specialist,Operations,110771,19.0,2,False,New York,2019-09-21,,1
+EMP-139,Marketing Specialist,Product,112799,14.8,3,True,New York,2019-11-05,Career transition to another industry.,0
+EMP-140,UX Designer,Marketing,68116,12.7,3,False,New York,2019-12-20,,1
+EMP-141,Lead DevOps Engineer,Human Resources,80470,8.9,4,False,New York,2020-02-03,,0
+EMP-142,Lead DevOps Engineer,Marketing,97344,18.7,2,False,New York,2020-03-19,,0
+EMP-143,Senior Accounting Manager,Human Resources,97918,17.5,2,True,New York,2020-05-03,,0
+EMP-144,Product Manager,Human Resources,107224,1.9,2,True,New York,2020-06-17,,0
+EMP-145,Financial Analyst,Product,94298,1.5,2,False,New York,2020-08-01,Expressed dissatisfaction with work-life balance.,0
+EMP-146,Staff Data Architect,Finance,163492,8.2,3,False,New York,2020-09-15,,0
+EMP-147,Site Reliability Engineer,Engineering,135219,16.4,3,False,New York,2020-10-30,,0
+EMP-148,Staff Data Architect,Product,116629,19.8,2,False,New York,2020-12-14,,1
+EMP-149,Database Administrator,Product,121040,3.9,4,False,New York,2021-01-28,,0
+EMP-150,Lead DevOps Engineer,Finance,154518,12.3,1,False,New York,2021-03-14,,0
+EMP-151,Machine Learning Specialist,Engineering,154835,8.2,1,True,New York,2021-04-28,,1
+EMP-152,Site Reliability Engineer,Marketing,83016,19.4,4,False,New York,2021-06-12,Expressed dissatisfaction with work-life balance.,0
+EMP-153,Technical Recruiter,Operations,78960,17.0,2,False,New York,2021-07-27,,0
+EMP-154,Product Manager,Operations,88591,16.9,3,False,New York,2021-09-10,,1
+EMP-155,Principal Security Analyst,Marketing,137848,9.9,1,False,New York,2021-10-25,,0
+EMP-156,Site Reliability Engineer,Product,158333,8.9,5,False,New York,2021-12-09,Pursuing higher education full-time.,0
+EMP-157,Marketing Specialist,Engineering,166732,6.2,5,True,New York,2022-01-23,Career transition to another industry.,0
+EMP-158,Staff Data Architect,Product,169821,2.1,4,False,New York,2022-03-09,,0
+EMP-159,Financial Analyst,Human Resources,122641,17.4,2,False,New York,2022-04-23,,0
