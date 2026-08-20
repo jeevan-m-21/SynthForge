@@ -1,0 +1,46 @@
+tracking_number,origin_hub,destination_hub,distance_km,weight_kg,fuel_consumed_liters,dispatch_datetime,requires_temperature_control,handling_notes,delayed
+TRK-90000,JFK-New York,DFW-Dallas,1693.7,148.3,157.7,2024-03-01 06:00:00,1,Standard freight,0
+TRK-90001,ORD-Chicago,DFW-Dallas,2702.9,155.6,240.4,2024-03-01 14:00:00,1,Standard freight,0
+TRK-90002,DFW-Dallas,JFK-New York,2408.1,111.8,206.0,2024-03-01 22:00:00,0,Standard freight,0
+TRK-90003,ATL-Atlanta,DFW-Dallas,624.7,186.7,78.7,2024-03-02 06:00:00,1,,1
+TRK-90004,LAX-Los Angeles,LAX-Los Angeles,1072.8,234.2,117.1,2024-03-02 14:00:00,0,,0
+TRK-90005,JFK-New York,SEA-Seattle,895.8,232.1,109.9,2024-03-02 22:00:00,0,Standard freight,0
+TRK-90006,JFK-New York,JFK-New York,2283.0,118.2,199.8,2024-03-03 06:00:00,0,Standard freight,0
+TRK-90007,LAX-Los Angeles,DFW-Dallas,293.9,37.2,29.9,2024-03-03 14:00:00,0,Fragile glass components,0
+TRK-90008,ATL-Atlanta,JFK-New York,1795.7,246.4,193.5,2024-03-03 22:00:00,0,Standard freight,0
+TRK-90009,ATL-Atlanta,ATL-Atlanta,2334.9,211.3,213.0,2024-03-04 06:00:00,0,Fragile glass components,0
+TRK-90010,DFW-Dallas,ORD-Chicago,2654.9,39.9,225.3,2024-03-04 14:00:00,0,Standard freight,0
+TRK-90011,DFW-Dallas,SEA-Seattle,1157.8,231.0,114.0,2024-03-04 22:00:00,0,,0
+TRK-90012,SEA-Seattle,JFK-New York,2499.5,218.8,222.4,2024-03-05 06:00:00,1,Standard freight,0
+TRK-90013,SEA-Seattle,ORD-Chicago,509.8,134.5,54.8,2024-03-05 14:00:00,0,Standard freight,0
+TRK-90014,ORD-Chicago,DFW-Dallas,2570.1,151.9,222.5,2024-03-05 22:00:00,1,Standard freight,0
+TRK-90015,JFK-New York,ORD-Chicago,557.0,105.8,61.4,2024-03-06 06:00:00,0,Fragile glass components,0
+TRK-90016,DFW-Dallas,SEA-Seattle,1312.4,23.1,109.9,2024-03-06 14:00:00,1,Standard freight,0
+TRK-90017,ATL-Atlanta,JFK-New York,2432.4,90.4,206.9,2024-03-06 22:00:00,0,Fragile glass components,0
+TRK-90018,LAX-Los Angeles,ATL-Atlanta,619.8,202.7,79.2,2024-03-07 06:00:00,0,Fragile glass components,0
+TRK-90019,ATL-Atlanta,DFW-Dallas,841.9,11.1,71.7,2024-03-07 14:00:00,0,Standard freight,0
+TRK-90020,JFK-New York,JFK-New York,2222.3,90.0,195.5,2024-03-07 22:00:00,1,Standard freight,1
+TRK-90021,SEA-Seattle,SEA-Seattle,2216.1,105.6,186.5,2024-03-08 06:00:00,0,Standard freight,0
+TRK-90022,ATL-Atlanta,DFW-Dallas,1995.2,139.0,178.7,2024-03-08 14:00:00,0,Fragile glass components,0
+TRK-90023,ORD-Chicago,LAX-Los Angeles,2143.1,230.8,205.7,2024-03-08 22:00:00,0,Standard freight,0
+TRK-90024,JFK-New York,ORD-Chicago,1719.6,93.1,154.0,2024-03-09 06:00:00,0,Standard freight,1
+TRK-90025,SEA-Seattle,SEA-Seattle,905.0,93.3,82.5,2024-03-09 14:00:00,0,Standard freight,0
+TRK-90026,LAX-Los Angeles,LAX-Los Angeles,1167.9,187.0,121.0,2024-03-09 22:00:00,0,Standard freight,0
+TRK-90027,SEA-Seattle,JFK-New York,708.5,118.5,74.6,2024-03-10 06:00:00,0,Standard freight,0
+TRK-90028,ORD-Chicago,ATL-Atlanta,2743.7,63.9,225.6,2024-03-10 14:00:00,0,Standard freight,0
+TRK-90029,JFK-New York,DFW-Dallas,1833.5,118.6,160.8,2024-03-10 22:00:00,1,Standard freight,1
+TRK-90030,LAX-Los Angeles,ORD-Chicago,1322.4,43.8,112.9,2024-03-11 06:00:00,1,,1
+TRK-90031,ORD-Chicago,DFW-Dallas,1493.6,52.3,126.7,2024-03-11 14:00:00,1,Standard freight,0
+TRK-90032,SEA-Seattle,JFK-New York,2852.4,129.6,250.1,2024-03-11 22:00:00,0,Standard freight,0
+TRK-90033,ORD-Chicago,DFW-Dallas,629.4,110.5,61.7,2024-03-12 06:00:00,1,Standard freight,1
+TRK-90034,JFK-New York,ORD-Chicago,1841.4,229.6,180.0,2024-03-12 14:00:00,1,Standard freight,1
+TRK-90035,DFW-Dallas,JFK-New York,1616.5,97.0,142.7,2024-03-12 22:00:00,0,,0
+TRK-90036,ORD-Chicago,DFW-Dallas,1912.1,149.3,179.4,2024-03-13 06:00:00,0,Standard freight,1
+TRK-90037,ORD-Chicago,ATL-Atlanta,250.7,161.7,39.6,2024-03-13 14:00:00,0,Standard freight,1
+TRK-90038,SEA-Seattle,SEA-Seattle,2641.9,13.1,214.5,2024-03-13 22:00:00,0,Standard freight,0
+TRK-90039,SEA-Seattle,JFK-New York,2809.9,169.2,251.4,2024-03-14 06:00:00,0,Standard freight,0
+TRK-90040,LAX-Los Angeles,SEA-Seattle,1782.4,52.7,158.7,2024-03-14 14:00:00,0,Standard freight,0
+TRK-90041,SEA-Seattle,JFK-New York,2150.6,240.7,203.1,2024-03-14 22:00:00,1,,1
+TRK-90042,ATL-Atlanta,ATL-Atlanta,2783.0,45.7,226.2,2024-03-15 06:00:00,0,Standard freight,0
+TRK-90043,JFK-New York,SEA-Seattle,2180.3,109.5,186.2,2024-03-15 14:00:00,0,Standard freight,1
+TRK-90044,JFK-New York,LAX-Los Angeles,627.1,30.5,46.4,2024-03-15 22:00:00,0,,0
