@@ -18,6 +18,7 @@ from backend.services.privacy_engine import (
 )
 from backend.services.data_service import load_dataset
 from backend.services.schema_intelligence import drop_identifier_columns
+from backend.services.dataset_profiler import DatasetProfile, profile_dataframe, SemanticType
 from backend.utils.logging_config import get_logger, audit_log
 from backend.utils.security import generate_job_id
 from backend.models.database import create_job, update_job
@@ -329,8 +330,10 @@ def generate_synthetic_data(
         if real_df is None:
             raise ValueError(f"Dataset {dataset_id} not found")
 
-        # Remove identifier-like columns with shared generic heuristics.
-        working_df = drop_identifier_columns(real_df)
+        profile = profile_dataframe(real_df, dataset_name=dataset_id)
+        id_cols = profile.detected_metadata.identifier_columns
+        target_col = profile.detected_metadata.target_column
+        working_df = real_df.drop(columns=id_cols, errors="ignore")
 
         # Step 2: Check privacy budget
         if apply_dp:
