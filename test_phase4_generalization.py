@@ -132,20 +132,13 @@ class TestEcommerceGeneralization(BaseGeneralizationTest):
     def test_02_identifiers(self):
         df = pd.read_csv(FIXTURES_DIR / "ecommerce.csv")
         profile = profile_dataframe(df)
-        if "order_id" not in profile.detected_metadata.identifier_columns or "customer_id" not in profile.detected_metadata.identifier_columns:
-            record_failure("E-commerce", "Identifier Detection",
-                           f"Detected IDs: {profile.detected_metadata.identifier_columns}",
-                           "Identifier heuristics failed to detect customer_id or order_id", "Medium", "profiling")
+        self.assertIn("order_id", profile.detected_metadata.identifier_columns)
+        self.assertIn("customer_id", profile.detected_metadata.identifier_columns)
 
     def test_03_target_detection(self):
         df = pd.read_csv(FIXTURES_DIR / "ecommerce.csv")
         profile = profile_dataframe(df)
-        detected = profile.detected_metadata.target_column
-        if detected != "returned":
-            record_failure("E-commerce", "Target Detection",
-                           f"Detected '{detected}' instead of 'returned'",
-                           "TARGET_NAME_KEYWORDS matched feature column 'category' before evaluating candidate targets",
-                           "Medium", "profiling")
+        self.assertEqual(profile.detected_metadata.target_column, "returned")
 
 
 class TestHRAnalyticsGeneralization(BaseGeneralizationTest):
@@ -158,47 +151,30 @@ class TestHRAnalyticsGeneralization(BaseGeneralizationTest):
         col_map = {c.name: c for c in profile.columns}
         self.assertEqual(col_map["company_hq"].semantic_type, SemanticType.CONSTANT)
         self.assertEqual(col_map["is_manager"].semantic_type, SemanticType.BOOLEAN)
-        if col_map["hire_date"].semantic_type != SemanticType.DATETIME:
-            record_failure("HR Analytics", "Semantic Type: Datetime as Identifier",
-                           f"Column 'hire_date' detected as '{col_map['hire_date'].semantic_type}' instead of 'datetime'",
-                           "Uniqueness ratio >= 0.95 on sequential date strings triggers identifier detection before datetime check",
-                           "High", "profiling")
+        self.assertEqual(col_map["hire_date"].semantic_type, SemanticType.DATETIME)
 
     def test_03_target_detection(self):
         df = pd.read_csv(FIXTURES_DIR / "hr_analytics.csv")
         profile = profile_dataframe(df)
-        detected = profile.detected_metadata.target_column
-        if detected != "attrition":
-            record_failure("HR Analytics", "Target Detection",
-                           f"Detected '{detected}' instead of 'attrition'",
-                           "Target heuristic selects first binary column ('is_manager') based on schema order without role scoring",
-                           "Medium", "profiling")
+        self.assertEqual(profile.detected_metadata.target_column, "attrition")
 
 
 class TestLogisticsGeneralization(BaseGeneralizationTest):
     def test_01_pipeline(self):
         df, profile, working_df, synth = self.run_core_pipeline("Logistics", "logistics.csv", sample_size=45)
 
-    def test_02_continuous_numeric_identifier_false_positive(self):
+    def test_02_continuous_numeric_identifier_protection(self):
         df = pd.read_csv(FIXTURES_DIR / "logistics.csv")
         profile = profile_dataframe(df)
         id_cols = profile.detected_metadata.identifier_columns
-        continuous_ids = [c for c in ["distance_km", "fuel_consumed_liters", "weight_kg"] if c in id_cols]
-        if continuous_ids:
-            record_failure("Logistics", "Continuous Numeric Identifier False Positive",
-                           f"Continuous numeric columns {continuous_ids} falsely dropped as identifiers",
-                           "Uniqueness ratio heuristic (>=0.95) flags continuous numeric features as identifiers",
-                           "High", "profiling")
+        for non_id in ["distance_km", "fuel_consumed_liters", "weight_kg"]:
+            self.assertNotIn(non_id, id_cols)
+        self.assertIn("tracking_number", id_cols)
 
     def test_03_target_detection(self):
         df = pd.read_csv(FIXTURES_DIR / "logistics.csv")
         profile = profile_dataframe(df)
-        detected = profile.detected_metadata.target_column
-        if detected != "delayed":
-            record_failure("Logistics", "Target Detection",
-                           f"Detected '{detected}' instead of 'delayed'",
-                           "Target heuristic picked boolean feature 'requires_temperature_control' due to column ordering",
-                           "Medium", "profiling")
+        self.assertEqual(profile.detected_metadata.target_column, "delayed")
 
 
 class TestIoTSensorGeneralization(BaseGeneralizationTest):
@@ -211,51 +187,31 @@ class TestIoTSensorGeneralization(BaseGeneralizationTest):
         self.assertGreater(profile.duplicate_count, 0)
         col_map = {c.name: c for c in profile.columns}
         self.assertEqual(col_map["firmware_version"].semantic_type, SemanticType.CONSTANT)
+        self.assertEqual(col_map["timestamp"].semantic_type, SemanticType.DATETIME)
 
     def test_03_target_detection(self):
         df = pd.read_csv(FIXTURES_DIR / "iot_sensor.csv")
         profile = profile_dataframe(df)
-        detected = profile.detected_metadata.target_column
-        if detected != "is_anomaly":
-            record_failure("IoT Sensor", "Target Detection",
-                           f"Detected '{detected}' instead of 'is_anomaly'",
-                           "Target heuristic prioritized 'error_flag' over 'is_anomaly' based on schema order",
-                           "Medium", "profiling")
+        self.assertEqual(profile.detected_metadata.target_column, "is_anomaly")
 
 
 class TestFinancialTransactionsGeneralization(BaseGeneralizationTest):
     def test_01_pipeline(self):
         df, profile, working_df, synth = self.run_core_pipeline("Financial Transactions", "financial_transactions.csv", sample_size=100)
 
-    def test_02_identifier_false_positive_and_miss(self):
+    def test_02_identifier_protection_and_detection(self):
         df = pd.read_csv(FIXTURES_DIR / "financial_transactions.csv")
         profile = profile_dataframe(df)
         id_cols = profile.detected_metadata.identifier_columns
-
-        # Continuous amount or timestamp falsely flagged as identifiers
-        false_positives = [c for c in ["transaction_amount", "transaction_time"] if c in id_cols]
-        if false_positives:
-            record_failure("Financial Transactions", "Identifier Detection False Positive",
-                           f"Continuous/datetime columns {false_positives} falsely flagged as identifiers",
-                           "Uniqueness ratio heuristic (>=0.95) flags continuous numeric/datetime features as identifiers",
-                           "High", "profiling")
-
-        # Account number missed
-        if "account_number" not in id_cols:
-            record_failure("Financial Transactions", "Identifier Detection False Negative",
-                           "Column 'account_number' was not detected as an identifier",
-                           "Identifier heuristic only checks suffix '_id' and skips '_number' with non-unique repeated values",
-                           "Medium", "profiling")
+        self.assertNotIn("transaction_amount", id_cols)
+        self.assertNotIn("transaction_time", id_cols)
+        self.assertIn("transaction_id", id_cols)
+        self.assertIn("account_number", id_cols)
 
     def test_03_target_detection(self):
         df = pd.read_csv(FIXTURES_DIR / "financial_transactions.csv")
         profile = profile_dataframe(df)
-        detected = profile.detected_metadata.target_column
-        if detected != "is_fraud":
-            record_failure("Financial Transactions", "Target Detection",
-                           f"Detected '{detected}' instead of 'is_fraud'",
-                           "Target heuristic prioritized boolean 'is_international' over 'is_fraud' by schema column order",
-                           "Medium", "profiling")
+        self.assertEqual(profile.detected_metadata.target_column, "is_fraud")
 
 
 class TestMovieRecommendationsGeneralization(BaseGeneralizationTest):
@@ -267,21 +223,12 @@ class TestMovieRecommendationsGeneralization(BaseGeneralizationTest):
         profile = profile_dataframe(df)
         col_map = {c.name: c for c in profile.columns}
         self.assertEqual(col_map["movie_title"].semantic_type, SemanticType.CATEGORICAL)
-        if col_map["stream_date"].semantic_type != SemanticType.DATETIME:
-            record_failure("Movie Recommendations", "Semantic Type: Datetime as Identifier",
-                           f"Column 'stream_date' detected as '{col_map['stream_date'].semantic_type}' instead of 'datetime'",
-                           "Unique date strings flagged as identifier before datetime parsing check",
-                           "High", "profiling")
+        self.assertEqual(col_map["stream_date"].semantic_type, SemanticType.DATETIME)
 
     def test_03_target_detection(self):
         df = pd.read_csv(FIXTURES_DIR / "movie_recommendations.csv")
         profile = profile_dataframe(df)
-        detected = profile.detected_metadata.target_column
-        if detected != "liked":
-            record_failure("Movie Recommendations", "Target Detection",
-                           f"Detected '{detected}' instead of 'liked'",
-                           "Target heuristic selected boolean feature 'has_subtitles' before 'liked'",
-                           "Medium", "profiling")
+        self.assertEqual(profile.detected_metadata.target_column, "liked")
 
 
 class TestPipelineIntegrationBugs(BaseGeneralizationTest):

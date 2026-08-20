@@ -156,6 +156,9 @@ def _is_text(series: pd.Series, unique_count: int, total: int) -> bool:
 
 
 def _semantic_type(col: str, series: pd.Series, is_id: bool, n_rows: int) -> str:
+    if _detect_datetime(series):
+        return SemanticType.DATETIME
+
     if is_id:
         return SemanticType.IDENTIFIER
 
@@ -171,9 +174,6 @@ def _semantic_type(col: str, series: pd.Series, is_id: bool, n_rows: int) -> str
         vals = set(series.dropna().unique())
         if vals.issubset({0, 1, 0.0, 1.0}) and unique_count <= 2:
             return SemanticType.BOOLEAN
-
-    if _detect_datetime(series):
-        return SemanticType.DATETIME
 
     if pd.api.types.is_numeric_dtype(series):
         return SemanticType.NUMERIC
