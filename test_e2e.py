@@ -1,4 +1,4 @@
-﻿"""End-to-end test for MediSynth.AI — all features."""
+"""End-to-end test for MediSynth.AI — all features."""
 import requests
 import json
 import sys
@@ -113,7 +113,8 @@ if ds_id and job_id:
 
 # 8. Federated learning
 print("\n--- Federated Learning ---")
-sample_csv = r"C:\Users\chira\.gemini\antigravity\scratch\synth-health-guard\data\sample\healthcare_data.csv"
+from pathlib import Path
+sample_csv = Path(__file__).parent / "data" / "sample" / "healthcare_data.csv"
 
 fed_res = test("Create federation", lambda: (
     requests.post(f"{BASE}/federated/create", json={"total_rounds": 3}).json()

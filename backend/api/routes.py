@@ -1,4 +1,4 @@
-﻿"""
+"""
 MediSynth.AI — API Routes
 All REST endpoints for the system.
 """
@@ -21,6 +21,8 @@ from backend.services.generator import generate_synthetic_data
 from backend.services.statistical_validator import validate_statistical
 from backend.services.ml_validator import validate_ml_utility
 from backend.services.attack_simulator import run_all_attacks
+from backend.services.schema_intelligence import drop_identifier_columns
+from backend.services.dataset_profiler import profile_dataframe
 from backend.services.privacy_engine import PrivacyBudgetManager
 from backend.services.federated_learning import FederationManager
 from backend.models.database import (
@@ -71,6 +73,32 @@ async def upload_data(file: UploadFile = File(...)):
         raise HTTPException(500, f"Failed to process file: {str(e)}")
 
 
+@router.post("/data/profile")
+async def profile_data(file: UploadFile = File(...)):
+    """Profile an uploaded CSV file and return DatasetProfile JSON without persisting raw data."""
+    if not file.filename or not file.filename.endswith(".csv"):
+        raise HTTPException(400, "Only CSV files are supported")
+
+    content = await file.read()
+    if len(content) == 0:
+        raise HTTPException(400, "Empty file")
+
+    try:
+        df = pd.read_csv(io.BytesIO(content))
+    except Exception as e:
+        raise HTTPException(400, f"Failed to parse CSV file: {str(e)}")
+
+    if df.empty or len(df.columns) == 0:
+        raise HTTPException(400, "CSV dataset contains no data or columns to profile")
+
+    try:
+        profile = profile_dataframe(df, dataset_name=file.filename)
+        profile_dict = profile.model_dump() if hasattr(profile, "model_dump") else profile.dict()
+        return sanitize({"status": "success", "data": profile_dict})
+    except Exception as e:
+        raise HTTPException(500, f"Failed to profile dataset: {str(e)}")
+
+
 @router.get("/data/list")
 async def list_datasets():
     """List all uploaded datasets."""
@@ -89,7 +117,7 @@ async def get_dataset_info(dataset_id: str):
 
 @router.get("/data/sample")
 async def load_sample_data():
-    """Load the built-in sample healthcare dataset."""
+    """Load the built-in sample tabular dataset used for the initial demo domain."""
     from backend.config import DATA_DIR
     sample_path = DATA_DIR / "sample" / "healthcare_data.csv"
     if not sample_path.exists():
@@ -102,7 +130,7 @@ async def load_sample_data():
 
 
 def _generate_sample_data(path: Path):
-    """Generate realistic sample healthcare data."""
+    """Generate realistic sample tabular data for the initial demo domain."""
     np.random = __import__("numpy").random
     np.random.seed(42)
     n = 1000
@@ -240,10 +268,9 @@ async def validate_stat(req: ValidateStatisticalRequest):
     if synth_df is None:
         raise HTTPException(404, "Synthetic data not found. Generate data first.")
 
-    # Remove ID-like columns
-    for col in ["patient_id", "id", "record_id", "index"]:
-        real_df = real_df.drop(columns=[col], errors="ignore")
-        synth_df = synth_df.drop(columns=[col], errors="ignore")
+    # Remove identifier-like columns using shared generic heuristics.
+    real_df = drop_identifier_columns(real_df)
+    synth_df = drop_identifier_columns(synth_df)
 
     result = validate_statistical(real_df, synth_df)
 
@@ -267,9 +294,8 @@ async def validate_ml(req: ValidateMLRequest):
     if synth_df is None:
         raise HTTPException(404, "Synthetic data not found. Generate data first.")
 
-    for col in ["patient_id", "id", "record_id", "index"]:
-        real_df = real_df.drop(columns=[col], errors="ignore")
-        synth_df = synth_df.drop(columns=[col], errors="ignore")
+    real_df = drop_identifier_columns(real_df)
+    synth_df = drop_identifier_columns(synth_df)
 
     result = validate_ml_utility(real_df, synth_df, req.target_column)
 
@@ -296,9 +322,8 @@ async def simulate_attacks(req: AttackSimulationRequest):
     if synth_df is None:
         raise HTTPException(404, "Synthetic data not found. Generate data first.")
 
-    for col in ["patient_id", "id", "record_id", "index"]:
-        real_df = real_df.drop(columns=[col], errors="ignore")
-        synth_df = synth_df.drop(columns=[col], errors="ignore")
+    real_df = drop_identifier_columns(real_df)
+    synth_df = drop_identifier_columns(synth_df)
 
     result = run_all_attacks(real_df, synth_df)
 
@@ -313,7 +338,7 @@ async def simulate_attacks(req: AttackSimulationRequest):
 # ──────────────────────────────────────────────
 @router.post("/federated/create")
 async def create_federation(req: CreateFederationRequest):
-    """Create a new federation for multi-hospital collaboration."""
+    """Create a new federation for collaborative tabular-data training."""
     fed = FederationManager.create_federation(req.total_rounds)
     return {"status": "success", "data": fed.to_dict()}
 
@@ -324,16 +349,15 @@ async def add_hospital(
     hospital_name: str = Form(...),
     file: UploadFile = File(...),
 ):
-    """Add a hospital's data to a federation."""
+    """Add a participant's data to a federation."""
     if not file.filename.endswith(".csv"):
         raise HTTPException(400, "Only CSV files supported")
 
     content = await file.read()
     df = pd.read_csv(io.BytesIO(content))
 
-    # Drop ID columns
-    for col in ["patient_id", "id", "record_id", "index"]:
-        df = df.drop(columns=[col], errors="ignore")
+    # Drop identifier columns using centralized schema intelligence
+    df = drop_identifier_columns(df)
 
     hospital_id = f"hosp_{generate_job_id()}"
     try:
@@ -347,7 +371,7 @@ async def add_hospital(
 
 @router.post("/federated/train")
 async def federated_train(req: FederatedTrainRequest):
-    """Run federated training across all hospitals."""
+    """Run federated training across all federation participants."""
     try:
         result = FederationManager.run_federated_training(
             req.federation_id,
@@ -414,7 +438,7 @@ async def health_check():
     """System health check."""
     return {
         "status": "healthy",
-        "system": "MediSynth.AI",
+        "system": "Privacy-Preserving Synthetic Data Platform",
         "version": "1.0.0",
     }
 
