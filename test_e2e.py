@@ -1,4 +1,4 @@
-﻿"""End-to-end test for MediSynth.AI — all features."""
+"""End-to-end test for MediSynth.AI — all features."""
 import requests
 import json
 import sys

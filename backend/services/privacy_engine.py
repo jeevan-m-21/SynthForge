@@ -1,4 +1,4 @@
-﻿"""
+"""
 MediSynth.AI — Differential Privacy Engine
 Implements Laplace/Gaussian mechanisms, RDP accounting, and privacy budget tracking.
 
@@ -257,13 +257,15 @@ class DPDataProcessor:
             return np.random.choice(other) if other else value
 
     def apply_dp(self, df: pd.DataFrame,
-                 real_df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict]:
+                 real_df: pd.DataFrame,
+                 target_column: Optional[str] = None) -> Tuple[pd.DataFrame, Dict]:
         """
         Apply differential privacy to a synthetic DataFrame.
 
         Args:
             df: Synthetic data to protect
             real_df: Original real data (for sensitivity estimation)
+            target_column: Optional detected target column name to preserve
 
         Returns:
             Tuple of (protected DataFrame, privacy metadata)
@@ -279,16 +281,30 @@ class DPDataProcessor:
         column_info = {}
 
         for col in df.columns:
-            if result[col].dtype in ["int64", "float64", "int32", "float32"]:
-                # Skip DP noise on binary target columns — preserve labels
-                if self._is_binary_column(result[col]):
-                    column_info[col] = {
-                        "type": "binary_target",
-                        "mechanism": "preserved",
-                        "note": "Binary targets preserved to maintain utility",
-                    }
-                    continue
+            if col not in real_df.columns:
+                continue
 
+            # Skip DP noise on explicit target columns — preserve labels
+            if target_column is not None and col == target_column:
+                column_info[col] = {
+                    "type": "target_column",
+                    "mechanism": "preserved",
+                    "note": "Target column preserved to maintain utility",
+                }
+                continue
+
+            if pd.api.types.is_bool_dtype(result[col]):
+                domain = [True, False]
+                result[col] = result[col].apply(
+                    lambda v: self._randomized_response(v, domain, per_col_epsilon)
+                )
+                column_info[col] = {
+                    "type": "boolean",
+                    "mechanism": "randomized_response",
+                    "domain_size": 2,
+                    "epsilon": per_col_epsilon,
+                }
+            elif result[col].dtype in ["int64", "float64", "int32", "float32"]:
                 # Numeric: apply mechanism with tighter sensitivity
                 sensitivity = self._compute_column_sensitivity(
                     result[col], real_df[col]

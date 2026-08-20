@@ -1,4 +1,4 @@
-﻿"""
+"""
 MediSynth.AI — Synthetic Data Generator
 Supports CTGAN, TVAE, and statistical fallback with DP noise integration.
 """
@@ -27,9 +27,10 @@ logger = get_logger("generator")
 
 class StatisticalGenerator:
     """
-    Fallback statistical generator using Gaussian copula-like approach.
-    No deep learning required — generates data by sampling from fitted
-    marginal distributions and preserving correlations via copula.
+    Profile-driven statistical generator using Gaussian copula-like approach.
+    Samples from fitted marginal distributions, preserving numeric correlations via Cholesky,
+    with explicit support for numeric, categorical, boolean, datetime, constant, text,
+    and missing values.
     """
 
     def __init__(self):
@@ -38,94 +39,227 @@ class StatisticalGenerator:
         self.correlation_matrix = None
         self.columns = []
         self.column_types = {}
+        self.boolean_stats = {}
+        self.constant_stats = {}
+        self.datetime_stats = {}
+        self.text_stats = {}
+        self.missing_rates = {}
+        self._corr_cols = []
 
-    def fit(self, df: pd.DataFrame):
-        """Fit marginal distributions and correlation structure."""
+    def fit(self, df: pd.DataFrame, profile: Optional[DatasetProfile] = None):
+        """Fit marginal distributions and correlation structure using DatasetProfile."""
         self.columns = list(df.columns)
+        if profile is None:
+            profile = profile_dataframe(df)
 
-        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        cat_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+        col_profiles = {c.name: c for c in profile.columns}
 
-        # Fit numeric marginals
-        for col in numeric_cols:
-            self.column_types[col] = "numeric"
-            values = df[col].dropna()
-            self.numeric_stats[col] = {
-                "mean": float(values.mean()),
-                "std": float(values.std()) if values.std() > 0 else 0.01,
-                "min": float(values.min()),
-                "max": float(values.max()),
-                "is_integer": df[col].dtype in ["int64", "int32"],
-            }
+        for col in self.columns:
+            c_prof = col_profiles.get(col)
+            sem_type = c_prof.semantic_type if c_prof else None
+            clean = df[col].dropna()
+            self.missing_rates[col] = float(df[col].isna().mean())
 
-        # Fit categorical marginals
-        for col in cat_cols:
-            self.column_types[col] = "categorical"
-            vc = df[col].value_counts(normalize=True)
-            self.categorical_probs[col] = {
-                "categories": vc.index.tolist(),
-                "probabilities": vc.values.tolist(),
-            }
+            if sem_type == SemanticType.CONSTANT or (clean.nunique() <= 1 and not clean.empty):
+                self.column_types[col] = "constant"
+                val = clean.iloc[0] if not clean.empty else None
+                self.constant_stats[col] = {"value": val}
+                self.categorical_probs[col] = {
+                    "categories": [str(val) if val is not None else ""],
+                    "probabilities": [1.0],
+                }
 
-        # Compute correlation matrix for numeric columns
-        if len(numeric_cols) > 1:
-            self.correlation_matrix = df[numeric_cols].corr().values
+            elif sem_type == SemanticType.BOOLEAN or pd.api.types.is_bool_dtype(df[col]):
+                self.column_types[col] = "boolean"
+                if pd.api.types.is_bool_dtype(df[col]):
+                    rep_type = "bool"
+                    p_true = float((clean == True).mean()) if not clean.empty else 0.5
+                elif pd.api.types.is_numeric_dtype(df[col]):
+                    rep_type = "int" if df[col].dtype in ["int64", "int32"] else "float"
+                    p_true = float((clean == 1).mean()) if not clean.empty else 0.5
+                else:
+                    rep_type = "str"
+                    true_vals = {"true", "yes", "1", "t", "y"}
+                    p_true = float(clean.astype(str).str.lower().isin(true_vals).mean()) if not clean.empty else 0.5
+
+                self.boolean_stats[col] = {"p_true": p_true, "rep_type": rep_type}
+                self.categorical_probs[col] = {
+                    "categories": [True, False] if rep_type == "bool" else ([1, 0] if rep_type == "int" else ["1", "0"]),
+                    "probabilities": [p_true, 1.0 - p_true],
+                }
+
+            elif sem_type == SemanticType.DATETIME or pd.api.types.is_datetime64_any_dtype(df[col]):
+                self.column_types[col] = "datetime"
+                dt_clean = pd.to_datetime(clean, errors="coerce").dropna()
+                if not dt_clean.empty:
+                    timestamps = (dt_clean.astype("int64") // 10**9).astype(float)
+                    self.datetime_stats[col] = {
+                        "mean": float(timestamps.mean()),
+                        "std": float(timestamps.std()) if len(timestamps) > 1 and timestamps.std() > 0 else 1.0,
+                        "min": float(timestamps.min()),
+                        "max": float(timestamps.max()),
+                        "is_native_dt": pd.api.types.is_datetime64_any_dtype(df[col]),
+                        "sample_format": str(clean.iloc[0]) if not clean.empty else None,
+                    }
+                else:
+                    self.datetime_stats[col] = {
+                        "mean": 0.0, "std": 1.0, "min": 0.0, "max": 0.0,
+                        "is_native_dt": False, "sample_format": None,
+                    }
+
+            elif sem_type == SemanticType.TEXT:
+                self.column_types[col] = "text"
+                samples = clean.astype(str).tolist()
+                pool = list(dict.fromkeys(samples))[:100]
+                if not pool:
+                    pool = [""]
+                self.text_stats[col] = {"pool": pool}
+                vc = clean.value_counts(normalize=True).head(50)
+                self.categorical_probs[col] = {
+                    "categories": vc.index.tolist() if not vc.empty else [""],
+                    "probabilities": vc.values.tolist() if not vc.empty else [1.0],
+                }
+
+            elif sem_type == SemanticType.NUMERIC or pd.api.types.is_numeric_dtype(df[col]):
+                self.column_types[col] = "numeric"
+                self.numeric_stats[col] = {
+                    "mean": float(clean.mean()) if not clean.empty else 0.0,
+                    "std": float(clean.std()) if len(clean) > 1 and clean.std() > 0 else 0.01,
+                    "min": float(clean.min()) if not clean.empty else 0.0,
+                    "max": float(clean.max()) if not clean.empty else 1.0,
+                    "is_integer": df[col].dtype in ["int64", "int32"],
+                }
+
+            else:
+                self.column_types[col] = "categorical"
+                vc = clean.value_counts(normalize=True)
+                self.categorical_probs[col] = {
+                    "categories": vc.index.tolist() if not vc.empty else [""],
+                    "probabilities": vc.values.tolist() if not vc.empty else [1.0],
+                }
+
+        # Correlation structure across numeric and datetime columns
+        self._corr_cols = [
+            c for c in self.columns
+            if self.column_types.get(c) in ["numeric", "datetime"]
+        ]
+        if len(self._corr_cols) > 1:
+            corr_df = pd.DataFrame()
+            for c in self._corr_cols:
+                if self.column_types[c] == "numeric":
+                    corr_df[c] = pd.to_numeric(df[c], errors="coerce")
+                else:
+                    dt_s = pd.to_datetime(df[c], errors="coerce")
+                    corr_df[c] = (dt_s.astype("int64") // 10**9).astype(float)
+            corr_matrix = corr_df.corr().fillna(0.0).values
+            if not np.isnan(corr_matrix).any():
+                self.correlation_matrix = corr_matrix
+            else:
+                self.correlation_matrix = None
         else:
             self.correlation_matrix = None
 
     def sample(self, num_rows: int) -> pd.DataFrame:
         """Generate synthetic data from fitted distributions."""
         data = {}
-        numeric_cols = [c for c in self.columns if self.column_types.get(c) == "numeric"]
-        cat_cols = [c for c in self.columns if self.column_types.get(c) == "categorical"]
 
-        # Generate correlated numeric columns
-        if self.correlation_matrix is not None and len(numeric_cols) > 1:
-            # Use Cholesky decomposition for correlated sampling
+        # Correlated sampling for numeric & datetime columns
+        if self.correlation_matrix is not None and len(self._corr_cols) > 1:
             try:
                 L = np.linalg.cholesky(
                     self.correlation_matrix +
-                    np.eye(len(numeric_cols)) * 1e-6  # regularize
+                    np.eye(len(self._corr_cols)) * 1e-6
                 )
-                z = np.random.normal(0, 1, (num_rows, len(numeric_cols)))
+                z = np.random.normal(0, 1, (num_rows, len(self._corr_cols)))
                 correlated = z @ L.T
 
-                for i, col in enumerate(numeric_cols):
-                    stats = self.numeric_stats[col]
-                    values = correlated[:, i] * stats["std"] + stats["mean"]
-                    values = np.clip(values, stats["min"], stats["max"])
-                    if stats["is_integer"]:
-                        values = np.round(values).astype(int)
-                    data[col] = values
+                for i, col in enumerate(self._corr_cols):
+                    ctype = self.column_types.get(col, "numeric")
+                    if ctype == "numeric":
+                        stats = self.numeric_stats[col]
+                        vals = correlated[:, i] * stats["std"] + stats["mean"]
+                        vals = np.clip(vals, stats["min"], stats["max"])
+                        if stats["is_integer"]:
+                            vals = np.round(vals).astype(int)
+                        data[col] = vals
+                    elif ctype == "datetime":
+                        stats = self.datetime_stats[col]
+                        ts_vals = correlated[:, i] * stats["std"] + stats["mean"]
+                        ts_vals = np.clip(ts_vals, stats["min"], stats["max"])
+                        dt_vals = pd.to_datetime(ts_vals, unit="s")
+                        if stats.get("is_native_dt"):
+                            data[col] = dt_vals
+                        else:
+                            fmt = "%Y-%m-%d %H:%M:%S" if " " in (stats.get("sample_format") or "") else "%Y-%m-%d"
+                            data[col] = dt_vals.strftime(fmt)
             except np.linalg.LinAlgError:
-                # Fall back to independent sampling
-                for col in numeric_cols:
-                    stats = self.numeric_stats[col]
-                    values = np.random.normal(stats["mean"], stats["std"], num_rows)
-                    values = np.clip(values, stats["min"], stats["max"])
-                    if stats["is_integer"]:
-                        values = np.round(values).astype(int)
-                    data[col] = values
-        else:
-            for col in numeric_cols:
-                stats = self.numeric_stats[col]
-                values = np.random.normal(stats["mean"], stats["std"], num_rows)
-                values = np.clip(values, stats["min"], stats["max"])
+                pass
+
+        # Sample remaining columns or independent fallbacks
+        for col in self.columns:
+            if col in data:
+                continue
+            ctype = self.column_types.get(col, "numeric")
+
+            if ctype == "numeric":
+                stats = self.numeric_stats.get(col, {"mean": 0.0, "std": 1.0, "min": 0.0, "max": 1.0, "is_integer": False})
+                vals = np.random.normal(stats["mean"], stats["std"], num_rows)
+                vals = np.clip(vals, stats["min"], stats["max"])
                 if stats["is_integer"]:
-                    values = np.round(values).astype(int)
-                data[col] = values
+                    vals = np.round(vals).astype(int)
+                data[col] = vals
 
-        # Generate categorical columns
-        for col in cat_cols:
-            probs = self.categorical_probs[col]
-            data[col] = np.random.choice(
-                probs["categories"],
-                size=num_rows,
-                p=probs["probabilities"],
-            )
+            elif ctype == "datetime":
+                stats = self.datetime_stats.get(col, {"mean": 0.0, "std": 1.0, "min": 0.0, "max": 0.0, "is_native_dt": False, "sample_format": None})
+                ts_vals = np.random.normal(stats["mean"], stats["std"], num_rows)
+                ts_vals = np.clip(ts_vals, stats["min"], stats["max"])
+                dt_vals = pd.to_datetime(ts_vals, unit="s")
+                if stats.get("is_native_dt"):
+                    data[col] = dt_vals
+                else:
+                    fmt = "%Y-%m-%d %H:%M:%S" if " " in (stats.get("sample_format") or "") else "%Y-%m-%d"
+                    data[col] = dt_vals.strftime(fmt)
 
-        # Preserve original column order
-        return pd.DataFrame(data)[self.columns]
+            elif ctype == "boolean":
+                stats = self.boolean_stats.get(col, {"p_true": 0.5, "rep_type": "bool"})
+                p = max(0.0, min(1.0, stats["p_true"]))
+                draws = np.random.random(num_rows) < p
+                rep = stats["rep_type"]
+                if rep == "bool":
+                    data[col] = draws
+                elif rep == "int":
+                    data[col] = draws.astype(int)
+                elif rep == "float":
+                    data[col] = draws.astype(float)
+                else:
+                    data[col] = np.where(draws, "1", "0")
+
+            elif ctype == "constant":
+                val = self.constant_stats.get(col, {}).get("value", None)
+                data[col] = [val] * num_rows
+
+            elif ctype == "text":
+                pool = self.text_stats.get(col, {}).get("pool", [""])
+                data[col] = np.random.choice(pool, size=num_rows)
+
+            elif ctype == "categorical":
+                probs = self.categorical_probs.get(col, {"categories": [""], "probabilities": [1.0]})
+                cats = probs["categories"]
+                p_vals = probs["probabilities"]
+                p_arr = np.array(p_vals, dtype=float)
+                p_arr = p_arr / p_arr.sum() if p_arr.sum() > 0 else None
+                data[col] = np.random.choice(cats, size=num_rows, p=p_arr)
+
+        res_df = pd.DataFrame(data)[self.columns]
+
+        # Apply missingness rates
+        for col in self.columns:
+            rate = self.missing_rates.get(col, 0.0)
+            if 0.0 < rate < 1.0:
+                mask = np.random.random(num_rows) < rate
+                res_df.loc[mask, col] = np.nan
+
+        return res_df
 
 
 def _train_sdv_model(df: pd.DataFrame, model_type: str,
@@ -174,14 +308,13 @@ def generate_synthetic_data(
     apply_dp: bool = True,
 ) -> Dict:
     """
-    Full synthetic data generation pipeline:
-    1. Load real data
-    2. Train generative model (CTGAN/TVAE/Statistical)
-    3. Generate synthetic samples
-    4. Apply differential privacy
-    5. Save and return results
-
-    Returns generation result with metadata.
+    Full profile-driven synthetic data generation pipeline:
+    1. Load real data and profile schema
+    2. Exclude detected identifier columns
+    3. Train generative model (CTGAN/TVAE/Statistical)
+    4. Generate synthetic samples
+    5. Apply differential privacy preserving target column
+    6. Save and return results
     """
     job_id = generate_job_id()
     create_job(job_id, dataset_id, "generation", {
@@ -190,7 +323,7 @@ def generate_synthetic_data(
     })
 
     try:
-        # Step 1: Load data
+        # Step 1: Load data and compute DatasetProfile
         update_job(job_id, status="running", progress=10)
         real_df = load_dataset(dataset_id)
         if real_df is None:
@@ -221,10 +354,9 @@ def generate_synthetic_data(
             sdv_model = _train_sdv_model(working_df, model_type, epochs, batch_size)
 
         if sdv_model is None:
-            # Fallback to statistical generator
             model_type = "statistical"
             stat_model = StatisticalGenerator()
-            stat_model.fit(working_df)
+            stat_model.fit(working_df, profile=profile)
 
         train_time = time.time() - t_start
         update_job(job_id, progress=70)
@@ -240,15 +372,23 @@ def generate_synthetic_data(
         # Step 5: Apply differential privacy
         dp_metadata = None
         if apply_dp:
+            num_cols = working_df.select_dtypes(include=[np.number]).columns
+            clip_bound = 1.0
+            if len(num_cols) > 0:
+                flat_vals = working_df[num_cols].values.flatten()
+                valid_vals = flat_vals[~np.isnan(flat_vals)]
+                if len(valid_vals) > 0:
+                    clip_bound = float(valid_vals.max() - valid_vals.min()) or 1.0
+
             dp_processor = DPDataProcessor(PrivacyParams(
                 epsilon=epsilon,
                 delta=delta,
                 mechanism=dp_mechanism,
-                clip_bound=float(working_df.select_dtypes(include=[np.number]).values.max()
-                                 - working_df.select_dtypes(include=[np.number]).values.min())
-                if len(working_df.select_dtypes(include=[np.number]).columns) > 0 else 1.0,
+                clip_bound=clip_bound,
             ))
-            synthetic_df, dp_metadata = dp_processor.apply_dp(synthetic_df, working_df)
+            synthetic_df, dp_metadata = dp_processor.apply_dp(
+                synthetic_df, working_df, target_column=target_col
+            )
 
         # Step 6: Save synthetic data
         output_filename = f"{dataset_id}_{model_type}_{job_id}.csv"
