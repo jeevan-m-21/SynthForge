@@ -1,4 +1,4 @@
-﻿"""
+"""
 MediSynth.AI — Privacy Attack Simulation
 Simulates membership inference, re-identification, and attribute inference attacks
 to validate privacy guarantees of synthetic data.
@@ -15,6 +15,7 @@ from scipy.spatial.distance import cdist
 
 from backend.config import ML_RANDOM_STATE
 from backend.utils.logging_config import get_logger
+from backend.services.schema_intelligence import detect_sensitive_columns, drop_identifier_columns
 
 logger = get_logger("attack_simulator")
 
@@ -290,23 +291,9 @@ def attribute_inference_attack(
     """
     common_cols = [c for c in real_df.columns if c in synth_df.columns]
 
-    # Auto-detect sensitive columns
+    # Auto-detect sensitive columns using centralized schema intelligence
     if sensitive_columns is None:
-        sensitive_keywords = [
-            "disease", "diagnosis", "diabetes", "hypertension", "smoking",
-            "heart", "cancer", "hiv", "mental", "gender", "race", "ethnicity",
-            "income", "insurance", "ssn",
-        ]
-        sensitive_columns = []
-        for col in common_cols:
-            if any(kw in col.lower() for kw in sensitive_keywords):
-                sensitive_columns.append(col)
-        # Add any binary columns
-        for col in common_cols:
-            if real_df[col].nunique() <= 5 and col not in sensitive_columns:
-                sensitive_columns.append(col)
-                if len(sensitive_columns) >= 5:
-                    break
+        sensitive_columns = detect_sensitive_columns(real_df[common_cols])
 
     if not sensitive_columns:
         sensitive_columns = common_cols[:3]

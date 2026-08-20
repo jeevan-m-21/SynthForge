@@ -113,8 +113,7 @@ if ds_id and job_id:
 
 # 8. Federated learning
 print("\n--- Federated Learning ---")
-from pathlib import Path
-sample_csv = Path(__file__).parent / "data" / "sample" / "healthcare_data.csv"
+sample_csv = r"C:\Users\jeeva\Downloads\synth-health-guard final\data\sample\healthcare_data.csv"
 
 fed_res = test("Create federation", lambda: (
     requests.post(f"{BASE}/federated/create", json={"total_rounds": 3}).json()

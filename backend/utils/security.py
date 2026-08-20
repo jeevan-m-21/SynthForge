@@ -1,6 +1,6 @@
 ﻿"""
 MediSynth.AI — Security Utilities
-Encryption, hashing, and data protection for HIPAA/GDPR compliance.
+Encryption, hashing, and general data protection helpers.
 """
 import hashlib
 import hmac
