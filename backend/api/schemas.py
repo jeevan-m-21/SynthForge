@@ -1,4 +1,4 @@
-﻿"""
+"""
 MediSynth.AI — Pydantic Request/Response Schemas
 """
 from pydantic import BaseModel, Field
@@ -59,6 +59,13 @@ class ValidateStatisticalRequest(BaseModel):
 
 
 class ValidateMLRequest(BaseModel):
+    dataset_id: str
+    synthetic_job_id: Optional[str] = None
+    synthetic_file: Optional[str] = None
+    target_column: Optional[str] = None
+
+
+class ValidateQualityReportRequest(BaseModel):
     dataset_id: str
     synthetic_job_id: Optional[str] = None
     synthetic_file: Optional[str] = None

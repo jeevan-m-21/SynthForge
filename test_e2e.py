@@ -111,7 +111,24 @@ if ds_id and job_id:
         print(f"    Re-ID: {a['reidentification']['records_at_risk_pct']}% at risk, risk={a['reidentification']['risk_level']}")
         print(f"    Attr: advantage={a['attribute_inference']['average_advantage']}, risk={a['attribute_inference']['risk_level']}")
 
-# 8. Federated learning
+# 8. Unified Quality Report (Phase 6)
+print("\n--- Unified Quality Report (Phase 6) ---")
+if ds_id and job_id:
+    qual_res = test("Unified Quality Report", lambda: (
+        requests.post(f"{BASE}/validate/quality-report", json={
+            "dataset_id": ds_id, "synthetic_job_id": job_id
+        }).json()
+    ))
+    if qual_res and qual_res.get("data"):
+        d = qual_res["data"]
+        ex = d["executive_summary"]
+        print(f"    Fidelity Score: {ex['data_fidelity_score']}/100 ({ex['data_fidelity_grade']})")
+        print(f"    Privacy Protection: {ex['privacy_protection_score']}/100 ({ex['privacy_protection_grade']})")
+        print(f"    Verdict: {ex['trust_verdict']}")
+        print(f"    Structural Score: {d['structural_fidelity']['score']}")
+        print(f"    Relationship Score: {d['relationship_fidelity']['score']}")
+
+# 9. Federated learning
 print("\n--- Federated Learning ---")
 sample_csv = r"C:\Users\jeeva\Downloads\synth-health-guard final\data\sample\healthcare_data.csv"
 

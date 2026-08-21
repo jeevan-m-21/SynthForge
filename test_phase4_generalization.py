@@ -21,6 +21,7 @@ from typing import Dict, List, Any
 
 from backend.services.generator import StatisticalGenerator, _train_sdv_model, generate_synthetic_data
 from backend.services.dataset_profiler import profile_dataframe, SemanticType
+from backend.services.quality_evaluator import QualityEvaluator
 from backend.services.schema_intelligence import (
     get_identifier_columns,
     detect_target_column,
@@ -39,6 +40,7 @@ def log_test_result(dataset: str, stage: str, status: str):
             "Profile": "PASS",
             "Generation": "PASS",
             "Output": "PASS",
+            "Quality": "PASS",
             "Status": "PASS"
         }
     if status == "FAIL":
@@ -120,6 +122,24 @@ class BaseGeneralizationTest(unittest.TestCase):
             log_test_result(dataset_name, "Output", "FAIL")
             record_failure(dataset_name, "Output Validation", str(e),
                            "Synthetic output data failed schema consistency or integrity check", "Medium", "validation")
+            raise
+
+        # 4. Quality Evaluation (Phase 6)
+        try:
+            report = QualityEvaluator.evaluate(
+                real_df=df,
+                synth_df=synth,
+                profile=profile,
+                target_column=profile.detected_metadata.target_column,
+            )
+            self.assertIn("executive_summary", report)
+            self.assertGreaterEqual(report["executive_summary"]["data_fidelity_score"], 0.0)
+            self.assertGreaterEqual(report["executive_summary"]["privacy_protection_score"], 0.0)
+            log_test_result(dataset_name, "Quality", "PASS")
+        except Exception as e:
+            log_test_result(dataset_name, "Quality", "FAIL")
+            record_failure(dataset_name, "Quality Evaluation", str(e),
+                           "QualityEvaluator.evaluate failed", "High", "evaluation")
             raise
 
         return df, profile, working_df, synth
@@ -249,14 +269,14 @@ class TestPipelineIntegrationBugs(BaseGeneralizationTest):
 
 
 def print_summary_tables():
-    print("\n" + "=" * 80)
+    print("\n" + "=" * 90)
     print("              SYNTHFORGE PHASE 4 GENERALIZATION TEST SUMMARY")
-    print("=" * 80)
-    print(f"{'Dataset':<26} {'Profile':<12} {'Generation':<14} {'Output':<12} {'Status':<8}")
-    print("-" * 80)
+    print("=" * 90)
+    print(f"{'Dataset':<24} {'Profile':<10} {'Generation':<12} {'Output':<10} {'Quality':<10} {'Status':<8}")
+    print("-" * 90)
     for ds, stages in DATASET_SUMMARY.items():
-        print(f"{ds:<26} {stages['Profile']:<12} {stages['Generation']:<14} {stages['Output']:<12} {stages['Status']:<8}")
-    print("=" * 80)
+        print(f"{ds:<24} {stages['Profile']:<10} {stages['Generation']:<12} {stages['Output']:<10} {stages.get('Quality', 'PASS'):<10} {stages['Status']:<8}")
+    print("=" * 90)
 
     print("\n" + "=" * 80)
     print("                           FAILURE SUMMARY")
