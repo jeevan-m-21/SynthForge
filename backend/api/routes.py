@@ -1,7 +1,4 @@
-"""
-MediSynth.AI — API Routes
-All REST endpoints for the system.
-"""
+import asyncio
 import io
 import json
 import numpy as np
@@ -32,7 +29,7 @@ from backend.models.database import (
 )
 from backend.utils.security import generate_job_id, sanitize_filename
 from backend.utils.logging_config import get_logger
-from backend.config import GENERATED_DIR, UPLOAD_DIR, MAX_UPLOAD_SIZE_MB
+from backend.config import GENERATED_DIR, UPLOAD_DIR, MAX_UPLOAD_SIZE_MB, MAX_EXECUTION_TIMEOUT_SECONDS
 
 logger = get_logger("routes")
 router = APIRouter(prefix="/api")
@@ -218,21 +215,31 @@ async def generate(req: GenerateRequest):
         raise HTTPException(404, f"Dataset {req.dataset_id} not found")
 
     try:
-        result = generate_synthetic_data(
-            dataset_id=req.dataset_id,
-            num_rows=req.num_rows,
-            model_type=req.model_type,
-            epochs=req.epochs,
-            batch_size=req.batch_size,
-            epsilon=req.epsilon,
-            delta=req.delta,
-            dp_mechanism=req.dp_mechanism,
-            apply_dp=req.apply_dp,
+        result = await asyncio.wait_for(
+            asyncio.to_thread(
+                generate_synthetic_data,
+                dataset_id=req.dataset_id,
+                num_rows=req.num_rows,
+                model_type=req.model_type,
+                epochs=req.epochs,
+                batch_size=req.batch_size,
+                epsilon=req.epsilon,
+                delta=req.delta,
+                dp_mechanism=req.dp_mechanism,
+                apply_dp=req.apply_dp,
+            ),
+            timeout=MAX_EXECUTION_TIMEOUT_SECONDS,
         )
         return sanitize({"status": "success", "data": result})
+    except asyncio.TimeoutError:
+        logger.error(f"Generation timed out after {MAX_EXECUTION_TIMEOUT_SECONDS}s")
+        raise HTTPException(504, f"Generation timed out after {MAX_EXECUTION_TIMEOUT_SECONDS} seconds.")
     except ValueError as e:
         raise HTTPException(400, str(e))
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Generation failed: {e}", exc_info=True)
         raise HTTPException(500, f"Generation failed: {str(e)}")
 
 
@@ -320,7 +327,13 @@ async def validate_stat(req: ValidateStatisticalRequest):
     real_df = drop_identifier_columns(real_df)
     synth_df = drop_identifier_columns(synth_df)
 
-    result = validate_statistical(real_df, synth_df)
+    try:
+        result = await asyncio.wait_for(
+            asyncio.to_thread(validate_statistical, real_df, synth_df),
+            timeout=MAX_EXECUTION_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(504, f"Statistical validation timed out after {MAX_EXECUTION_TIMEOUT_SECONDS}s.")
 
     report_id = f"stat_{generate_job_id()}"
     save_report(report_id, "statistical", req.dataset_id, sanitize(result))
@@ -345,7 +358,13 @@ async def validate_ml(req: ValidateMLRequest):
     real_df = drop_identifier_columns(real_df)
     synth_df = drop_identifier_columns(synth_df)
 
-    result = validate_ml_utility(real_df, synth_df, req.target_column)
+    try:
+        result = await asyncio.wait_for(
+            asyncio.to_thread(validate_ml_utility, real_df, synth_df, req.target_column),
+            timeout=MAX_EXECUTION_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(504, f"ML validation timed out after {MAX_EXECUTION_TIMEOUT_SECONDS}s.")
 
     if "error" in result:
         raise HTTPException(400, result["error"])
@@ -373,7 +392,13 @@ async def simulate_attacks(req: AttackSimulationRequest):
     real_df = drop_identifier_columns(real_df)
     synth_df = drop_identifier_columns(synth_df)
 
-    result = run_all_attacks(real_df, synth_df)
+    try:
+        result = await asyncio.wait_for(
+            asyncio.to_thread(run_all_attacks, real_df, synth_df),
+            timeout=MAX_EXECUTION_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(504, f"Attack simulation timed out after {MAX_EXECUTION_TIMEOUT_SECONDS}s.")
 
     report_id = f"attack_{generate_job_id()}"
     save_report(report_id, "attack_simulation", req.dataset_id, sanitize(result))
@@ -412,14 +437,21 @@ async def validate_quality_report(req: ValidateQualityReportRequest):
     budget_state = PrivacyBudgetManager.get_budget(req.dataset_id)
     budget_dict = budget_state.to_dict() if budget_state else None
 
-    # Run unified quality evaluation
-    report = QualityEvaluator.evaluate(
-        real_df=real_df,
-        synth_df=synth_df,
-        target_column=req.target_column,
-        dp_metadata=dp_metadata,
-        budget_state=budget_dict,
-    )
+    try:
+        # Run unified quality evaluation in worker thread
+        report = await asyncio.wait_for(
+            asyncio.to_thread(
+                QualityEvaluator.evaluate,
+                real_df=real_df,
+                synth_df=synth_df,
+                target_column=req.target_column,
+                dp_metadata=dp_metadata,
+                budget_state=budget_dict,
+            ),
+            timeout=MAX_EXECUTION_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(504, f"Quality evaluation timed out after {MAX_EXECUTION_TIMEOUT_SECONDS}s.")
 
     report_id = f"qual_{generate_job_id()}"
     save_report(report_id, "quality_report", req.dataset_id, sanitize(report))
@@ -480,23 +512,39 @@ async def add_hospital(
 async def federated_train(req: FederatedTrainRequest):
     """Run federated training across all federation participants."""
     try:
-        result = FederationManager.run_federated_training(
-            req.federation_id,
-            dp_epsilon=req.dp_epsilon,
-            dp_delta=req.dp_delta,
-            apply_dp_to_updates=req.apply_dp,
+        result = await asyncio.wait_for(
+            asyncio.to_thread(
+                FederationManager.run_federated_training,
+                req.federation_id,
+                dp_epsilon=req.dp_epsilon,
+                dp_delta=req.dp_delta,
+                apply_dp_to_updates=req.apply_dp,
+            ),
+            timeout=MAX_EXECUTION_TIMEOUT_SECONDS,
         )
         return {"status": "success", "data": result}
+    except asyncio.TimeoutError:
+        raise HTTPException(504, f"Federated training timed out after {MAX_EXECUTION_TIMEOUT_SECONDS}s.")
     except ValueError as e:
         raise HTTPException(400, str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Federated training failed: {e}", exc_info=True)
+        raise HTTPException(500, f"Federated training failed: {str(e)}")
 
 
 @router.post("/federated/generate")
 async def federated_generate(req: FederatedGenerateRequest):
     """Generate synthetic data from federated global model."""
     try:
-        synth_df, metadata = FederationManager.generate_from_federation(
-            req.federation_id, req.num_rows
+        synth_df, metadata = await asyncio.wait_for(
+            asyncio.to_thread(
+                FederationManager.generate_from_federation,
+                req.federation_id,
+                req.num_rows,
+            ),
+            timeout=MAX_EXECUTION_TIMEOUT_SECONDS,
         )
         output_file = GENERATED_DIR / f"federated_{req.federation_id}.csv"
         synth_df.to_csv(output_file, index=False)
@@ -509,8 +557,15 @@ async def federated_generate(req: FederatedGenerateRequest):
                 "output_file": str(output_file),
             },
         })
+    except asyncio.TimeoutError:
+        raise HTTPException(504, f"Federated generation timed out after {MAX_EXECUTION_TIMEOUT_SECONDS}s.")
     except ValueError as e:
         raise HTTPException(400, str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Federated generation failed: {e}", exc_info=True)
+        raise HTTPException(500, f"Federated generation failed: {str(e)}")
 
 
 @router.get("/federated/list")

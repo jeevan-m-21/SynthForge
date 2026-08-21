@@ -3,6 +3,7 @@ MediSynth.AI — Pydantic Request/Response Schemas
 """
 from pydantic import BaseModel, Field
 from typing import Any, Dict, List, Optional
+from backend.config import MAX_SYNTH_ROWS, MAX_EPOCHS, MAX_FL_ROUNDS
 
 
 # ──────────────────────────────────────────────
@@ -27,9 +28,9 @@ class DatasetListResponse(BaseModel):
 # ──────────────────────────────────────────────
 class GenerateRequest(BaseModel):
     dataset_id: str
-    num_rows: int = Field(default=1000, ge=10, le=1000000)
+    num_rows: int = Field(default=1000, ge=10, le=MAX_SYNTH_ROWS)
     model_type: str = Field(default="statistical", pattern="^(ctgan|tvae|statistical)$")
-    epochs: int = Field(default=100, ge=1, le=1000)
+    epochs: int = Field(default=50, ge=1, le=MAX_EPOCHS)
     batch_size: int = Field(default=500, ge=32, le=10000)
     epsilon: float = Field(default=1.0, gt=0, le=100)
     delta: float = Field(default=1e-5, gt=0, lt=1)
@@ -85,7 +86,7 @@ class AttackSimulationRequest(BaseModel):
 # Federated Learning
 # ──────────────────────────────────────────────
 class CreateFederationRequest(BaseModel):
-    total_rounds: int = Field(default=5, ge=1, le=50)
+    total_rounds: int = Field(default=5, ge=1, le=MAX_FL_ROUNDS)
 
 
 class FederatedTrainRequest(BaseModel):
@@ -97,7 +98,7 @@ class FederatedTrainRequest(BaseModel):
 
 class FederatedGenerateRequest(BaseModel):
     federation_id: str
-    num_rows: int = Field(default=1000, ge=10, le=1000000)
+    num_rows: int = Field(default=1000, ge=10, le=MAX_SYNTH_ROWS)
 
 
 # ──────────────────────────────────────────────

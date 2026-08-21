@@ -8,6 +8,7 @@ Mathematical Guarantees:
 - Rényi DP Accountant: tight composition bounds across multiple queries
 """
 import math
+import threading
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Optional, Tuple
@@ -383,45 +384,54 @@ class DPDataProcessor:
 # Budget Manager (Singleton-like)
 # ──────────────────────────────────────────────
 class PrivacyBudgetManager:
-    """Manages per-dataset privacy budgets."""
+    """Manages per-dataset privacy budgets with thread-safe atomic check-and-spend."""
 
     _budgets: Dict[str, PrivacyBudgetState] = {}
+    _lock = threading.Lock()
 
     @classmethod
     def get_or_create(cls, dataset_id: str,
                       max_epsilon: float = MAX_EPSILON_BUDGET
                       ) -> PrivacyBudgetState:
-        if dataset_id not in cls._budgets:
-            cls._budgets[dataset_id] = PrivacyBudgetState(
-                dataset_id=dataset_id, max_epsilon=max_epsilon
-            )
-        return cls._budgets[dataset_id]
+        with cls._lock:
+            if dataset_id not in cls._budgets:
+                cls._budgets[dataset_id] = PrivacyBudgetState(
+                    dataset_id=dataset_id, max_epsilon=max_epsilon
+                )
+            return cls._budgets[dataset_id]
 
     @classmethod
     def spend(cls, dataset_id: str, epsilon: float, delta: float,
               operation: str) -> Tuple[bool, PrivacyBudgetState]:
-        """Attempt to spend privacy budget. Returns (success, state)."""
-        budget = cls.get_or_create(dataset_id)
-        if not budget.can_spend(epsilon):
-            logger.warning(
-                f"Privacy budget exhausted for dataset {dataset_id}. "
-                f"Requested ε={epsilon}, remaining ε={budget.remaining_epsilon}"
-            )
-            return False, budget
-        budget.record_spend(epsilon, delta, operation)
+        """Atomically check and spend privacy budget under lock to prevent TOCTOU race conditions."""
+        with cls._lock:
+            if dataset_id not in cls._budgets:
+                cls._budgets[dataset_id] = PrivacyBudgetState(
+                    dataset_id=dataset_id, max_epsilon=MAX_EPSILON_BUDGET
+                )
+            budget = cls._budgets[dataset_id]
+            if not budget.can_spend(epsilon):
+                logger.warning(
+                    f"Privacy budget exhausted for dataset {dataset_id}. "
+                    f"Requested ε={epsilon}, remaining ε={budget.remaining_epsilon}"
+                )
+                return False, budget
+            budget.record_spend(epsilon, delta, operation)
 
-        if budget.warning_level:
-            logger.warning(
-                f"Privacy budget warning ({budget.warning_level}) for "
-                f"dataset {dataset_id}: {budget.utilization_pct:.1f}% used"
-            )
+            if budget.warning_level:
+                logger.warning(
+                    f"Privacy budget warning ({budget.warning_level}) for "
+                    f"dataset {dataset_id}: {budget.utilization * 100:.1f}% used"
+                )
 
-        return True, budget
+            return True, budget
 
     @classmethod
     def get_budget(cls, dataset_id: str) -> Optional[PrivacyBudgetState]:
-        return cls._budgets.get(dataset_id)
+        with cls._lock:
+            return cls._budgets.get(dataset_id)
 
     @classmethod
     def get_all_budgets(cls) -> Dict[str, Dict]:
-        return {k: v.to_dict() for k, v in cls._budgets.items()}
+        with cls._lock:
+            return {k: v.to_dict() for k, v in cls._budgets.items()}

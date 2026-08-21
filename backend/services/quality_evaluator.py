@@ -10,12 +10,14 @@ Orchestrates 5-pillar evaluation:
 Maintains strict separation between Data Fidelity and Privacy Protection dimensions.
 """
 import math
+import hashlib
 import numpy as np
 import pandas as pd
 from scipy import stats as scipy_stats
 from typing import Dict, List, Optional, Any, Tuple
 
 from backend.utils.logging_config import get_logger
+from backend.config import MAX_CAT_COLS_FOR_ASSOC
 from backend.services.schema_intelligence import (
     detect_target_column,
     drop_identifier_columns,
@@ -378,6 +380,9 @@ def evaluate_relationship_fidelity(
     cramers_matrix_real = []
     cramers_matrix_synth = []
     valid_cat_cols = [c for c in cat_cols if real[c].dropna().nunique() > 1]
+    if len(valid_cat_cols) > MAX_CAT_COLS_FOR_ASSOC:
+        # Deterministically select top categorical columns
+        valid_cat_cols = sorted(valid_cat_cols)[:MAX_CAT_COLS_FOR_ASSOC]
 
     if len(valid_cat_cols) >= 2:
         k = len(valid_cat_cols)
@@ -568,6 +573,7 @@ def check_exact_duplicate_collisions(
 ) -> Tuple[int, float]:
     """
     Checks for exact 1-to-1 matching records between real and synthetic data.
+    Uses deterministic row hashing (hash-set lookup) to prevent Cartesian merge explosions.
     Returns (exact_match_count, exact_match_rate).
     """
     common_cols = [c for c in real_df.columns if c in synth_df.columns]
@@ -580,9 +586,13 @@ def check_exact_duplicate_collisions(
     if r_clean.empty or s_clean.empty:
         return 0, 0.0
 
-    # Inner merge to find exact matching rows
-    matches = pd.merge(r_clean, s_clean, how="inner", on=common_cols)
-    match_count = len(matches)
+    def _hash_tuple(row_tuple) -> str:
+        return hashlib.sha256(repr(row_tuple).encode("utf-8")).hexdigest()
+
+    real_hashes = {_hash_tuple(t) for t in r_clean.itertuples(index=False, name=None)}
+
+    # Count synthetic rows whose values match an exact real row
+    match_count = sum(1 for t in s_clean.itertuples(index=False, name=None) if _hash_tuple(t) in real_hashes)
     match_rate = float(match_count / len(synth_df))
     return match_count, match_rate
 

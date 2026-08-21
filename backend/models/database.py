@@ -1,8 +1,6 @@
-﻿"""
-MediSynth.AI — Data Models & In-Memory Storage
-JSON-file backed persistence for datasets, jobs, privacy budgets, and reports.
-"""
+import os
 import json
+import secrets
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,7 +12,7 @@ from backend.config import STORAGE_DIR
 # Storage Backend
 # ──────────────────────────────────────────────
 class JSONStore:
-    """Thread-safe JSON file-backed key-value store."""
+    """Thread-safe JSON file-backed key-value store with atomic write-and-replace."""
 
     def __init__(self, filepath: Path):
         self._filepath = filepath
@@ -25,15 +23,27 @@ class JSONStore:
     def _load(self):
         if self._filepath.exists():
             try:
-                with open(self._filepath, "r") as f:
+                with open(self._filepath, "r", encoding="utf-8") as f:
                     self._data = json.load(f)
             except (json.JSONDecodeError, IOError):
                 self._data = {}
 
     def _save(self):
         self._filepath.parent.mkdir(parents=True, exist_ok=True)
-        with open(self._filepath, "w") as f:
-            json.dump(self._data, f, indent=2, default=str)
+        temp_file = self._filepath.with_suffix(f".tmp.{secrets.token_hex(4)}")
+        try:
+            with open(temp_file, "w", encoding="utf-8") as f:
+                json.dump(self._data, f, indent=2, default=str)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(temp_file, self._filepath)
+        except Exception:
+            if temp_file.exists():
+                try:
+                    temp_file.unlink()
+                except OSError:
+                    pass
+            raise
 
     def get(self, key: str) -> Optional[Dict]:
         with self._lock:

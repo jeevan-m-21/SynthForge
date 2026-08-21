@@ -13,11 +13,18 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.neighbors import NearestNeighbors
 from scipy.spatial.distance import cdist
 
-from backend.config import ML_RANDOM_STATE
+from backend.config import ML_RANDOM_STATE, MAX_ATTACK_SAMPLE_SIZE
 from backend.utils.logging_config import get_logger
 from backend.services.schema_intelligence import detect_sensitive_columns, drop_identifier_columns
 
 logger = get_logger("attack_simulator")
+
+
+def _sample_bounded(df: pd.DataFrame, max_size: int = MAX_ATTACK_SAMPLE_SIZE) -> pd.DataFrame:
+    """Deterministically sample dataframe if it exceeds max_size to guard against O(N^2) memory explosions."""
+    if len(df) > max_size:
+        return df.sample(n=max_size, random_state=ML_RANDOM_STATE).copy()
+    return df
 
 
 def _encode_dataframe(df: pd.DataFrame) -> np.ndarray:
@@ -59,6 +66,11 @@ def membership_inference_attack(
     Returns:
         Attack metrics including AUC, accuracy, and risk level.
     """
+    # Bound sample sizes to prevent distance calculation resource exhaustion
+    real_train_df = _sample_bounded(real_train_df)
+    real_holdout_df = _sample_bounded(real_holdout_df)
+    synth_df = _sample_bounded(synth_df)
+
     # Align columns
     common_cols = [c for c in real_train_df.columns
                    if c in synth_df.columns and c in real_holdout_df.columns]
@@ -183,6 +195,10 @@ def reidentification_attack(
     Returns:
         Re-identification risk metrics.
     """
+    # Bound sample sizes to prevent distance calculation resource exhaustion
+    real_df = _sample_bounded(real_df)
+    synth_df = _sample_bounded(synth_df)
+
     common_cols = [c for c in real_df.columns if c in synth_df.columns]
     real_enc = _encode_dataframe(real_df[common_cols])
     synth_enc = _encode_dataframe(synth_df[common_cols])
@@ -289,6 +305,10 @@ def attribute_inference_attack(
     Returns:
         Per-column attribute inference metrics.
     """
+    # Bound sample sizes to prevent model training resource exhaustion
+    real_df = _sample_bounded(real_df)
+    synth_df = _sample_bounded(synth_df)
+
     common_cols = [c for c in real_df.columns if c in synth_df.columns]
 
     # Auto-detect sensitive columns using centralized schema intelligence

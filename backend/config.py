@@ -35,6 +35,17 @@ _raw_cors = os.getenv(
 CORS_ORIGINS = [orig.strip() for orig in _raw_cors.split(",") if orig.strip()]
 
 # ──────────────────────────────────────────────
+# Resource & Concurrency Limits (Phase 7B)
+# ──────────────────────────────────────────────
+MAX_SYNTH_ROWS = int(os.getenv("SYNTH_MAX_ROWS", "100000"))
+MAX_EPOCHS = int(os.getenv("SYNTH_MAX_EPOCHS", "200"))
+MAX_FL_ROUNDS = int(os.getenv("SYNTH_MAX_FL_ROUNDS", "20"))
+MAX_EXECUTION_TIMEOUT_SECONDS = int(os.getenv("SYNTH_MAX_TIMEOUT_SECONDS", "300"))
+MAX_ATTACK_SAMPLE_SIZE = int(os.getenv("SYNTH_MAX_ATTACK_SAMPLE_SIZE", "5000"))
+MAX_CAT_COLS_FOR_ASSOC = int(os.getenv("SYNTH_MAX_CAT_COLS_FOR_ASSOC", "30"))
+SYNTH_MAX_WORKERS = int(os.getenv("SYNTH_MAX_WORKERS", "4"))
+
+# ──────────────────────────────────────────────
 # Upload Limits
 # ──────────────────────────────────────────────
 MAX_UPLOAD_SIZE_MB = int(os.getenv("SYNTH_MAX_UPLOAD_SIZE_MB", "50"))
@@ -51,9 +62,9 @@ PRIVACY_WARNING_THRESHOLDS = [0.5, 0.75, 0.9]  # warn at 50%, 75%, 90%
 # Generator Defaults
 # ──────────────────────────────────────────────
 DEFAULT_MODEL_TYPE = "ctgan"  # ctgan | tvae | gaussian_copula
-DEFAULT_EPOCHS = 50
+DEFAULT_EPOCHS = min(50, MAX_EPOCHS)
 DEFAULT_BATCH_SIZE = 500
-DEFAULT_NUM_ROWS = 1000
+DEFAULT_NUM_ROWS = min(1000, MAX_SYNTH_ROWS)
 
 # ──────────────────────────────────────────────
 # ML Validation
