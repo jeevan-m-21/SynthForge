@@ -13,6 +13,7 @@ from typing import Any, Optional
 
 from backend.api.schemas import (
     GenerateRequest, ValidateStatisticalRequest, ValidateMLRequest,
+    ValidateQualityReportRequest,
     AttackSimulationRequest, CreateFederationRequest, FederatedTrainRequest,
     FederatedGenerateRequest, StatusResponse,
 )
@@ -21,6 +22,7 @@ from backend.services.generator import generate_synthetic_data
 from backend.services.statistical_validator import validate_statistical
 from backend.services.ml_validator import validate_ml_utility
 from backend.services.attack_simulator import run_all_attacks
+from backend.services.quality_evaluator import QualityEvaluator
 from backend.services.schema_intelligence import drop_identifier_columns
 from backend.services.dataset_profiler import profile_dataframe
 from backend.services.privacy_engine import PrivacyBudgetManager
@@ -331,6 +333,52 @@ async def simulate_attacks(req: AttackSimulationRequest):
     save_report(report_id, "attack_simulation", req.dataset_id, sanitize(result))
 
     return sanitize({"status": "success", "data": result})
+
+
+# ──────────────────────────────────────────────
+# Unified Quality Report Endpoint (Phase 6)
+# ──────────────────────────────────────────────
+@router.post("/validate/quality-report")
+async def validate_quality_report(req: ValidateQualityReportRequest):
+    """Run unified 5-pillar synthetic data quality and trustworthiness evaluation."""
+    real_df = data_service.load_dataset(req.dataset_id)
+    if real_df is None:
+        raise HTTPException(404, f"Dataset {req.dataset_id} not found")
+
+    synth_df = _load_synthetic(req.synthetic_job_id, req.synthetic_file, req.dataset_id)
+    if synth_df is None:
+        raise HTTPException(404, "Synthetic data not found. Generate data first.")
+
+    # Retrieve associated job/DP metadata if available
+    job_id = req.synthetic_job_id
+    job = jobs_store.get(job_id) if job_id else None
+    if not job:
+        # Check latest completed job for this dataset
+        all_jobs = jobs_store.list_all()
+        dataset_jobs = [
+            j for j in all_jobs.values()
+            if j.get("dataset_id") == req.dataset_id and j.get("status") == "completed"
+        ]
+        if dataset_jobs:
+            job = max(dataset_jobs, key=lambda j: j.get("created_at", ""))
+
+    dp_metadata = job.get("result", {}).get("dp_metadata") if job and job.get("result") else None
+    budget_state = PrivacyBudgetManager.get_budget(req.dataset_id)
+    budget_dict = budget_state.to_dict() if budget_state else None
+
+    # Run unified quality evaluation
+    report = QualityEvaluator.evaluate(
+        real_df=real_df,
+        synth_df=synth_df,
+        target_column=req.target_column,
+        dp_metadata=dp_metadata,
+        budget_state=budget_dict,
+    )
+
+    report_id = f"qual_{generate_job_id()}"
+    save_report(report_id, "quality_report", req.dataset_id, sanitize(report))
+
+    return sanitize({"status": "success", "data": report})
 
 
 # ──────────────────────────────────────────────
