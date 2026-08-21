@@ -30,10 +30,39 @@ from backend.services.federated_learning import FederationManager
 from backend.models.database import (
     jobs_store, reports_store, save_report, datasets_store
 )
-from backend.utils.security import generate_job_id
-from backend.config import GENERATED_DIR
+from backend.utils.security import generate_job_id, sanitize_filename
+from backend.utils.logging_config import get_logger
+from backend.config import GENERATED_DIR, UPLOAD_DIR, MAX_UPLOAD_SIZE_MB
 
+logger = get_logger("routes")
 router = APIRouter(prefix="/api")
+
+MAX_UPLOAD_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
+
+
+async def _read_upload_file(file: UploadFile) -> bytes:
+    """Read upload file in chunks to enforce MAX_UPLOAD_SIZE_MB and validate extension."""
+    raw_name = file.filename or ""
+    if not raw_name.lower().endswith(".csv"):
+        raise HTTPException(400, "Only CSV files are supported.")
+
+    chunk_size = 1024 * 1024  # 1MB chunk
+    chunks = []
+    total_size = 0
+
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > MAX_UPLOAD_BYTES:
+            raise HTTPException(413, f"File exceeds maximum allowed upload size of {MAX_UPLOAD_SIZE_MB}MB.")
+        chunks.append(chunk)
+
+    if total_size == 0:
+        raise HTTPException(400, "Uploaded file is empty.")
+
+    return b"".join(chunks)
 
 
 def sanitize(obj: Any) -> Any:
@@ -61,44 +90,47 @@ def sanitize(obj: Any) -> Any:
 @router.post("/data/upload")
 async def upload_data(file: UploadFile = File(...)):
     """Upload a CSV file for synthetic data generation."""
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(400, "Only CSV files are supported")
-
-    content = await file.read()
-    if len(content) == 0:
-        raise HTTPException(400, "Empty file")
+    content = await _read_upload_file(file)
 
     try:
         result = data_service.ingest_csv(content, file.filename)
         return sanitize({"status": "success", "data": result})
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(500, f"Failed to process file: {str(e)}")
+        logger.error(f"Upload processing failed: {e}", exc_info=True)
+        raise HTTPException(500, "Failed to process uploaded file.")
 
 
 @router.post("/data/profile")
 async def profile_data(file: UploadFile = File(...)):
     """Profile an uploaded CSV file and return DatasetProfile JSON without persisting raw data."""
-    if not file.filename or not file.filename.endswith(".csv"):
-        raise HTTPException(400, "Only CSV files are supported")
-
-    content = await file.read()
-    if len(content) == 0:
-        raise HTTPException(400, "Empty file")
+    content = await _read_upload_file(file)
 
     try:
         df = pd.read_csv(io.BytesIO(content))
+    except UnicodeDecodeError:
+        raise HTTPException(400, "Invalid file encoding. UTF-8 encoded CSV files are required.")
+    except pd.errors.EmptyDataError:
+        raise HTTPException(400, "Uploaded CSV contains no data.")
+    except pd.errors.ParserError:
+        raise HTTPException(400, "Malformed CSV format: unable to parse rows.")
     except Exception as e:
         raise HTTPException(400, f"Failed to parse CSV file: {str(e)}")
 
-    if df.empty or len(df.columns) == 0:
-        raise HTTPException(400, "CSV dataset contains no data or columns to profile")
+    if df.empty or len(df) == 0 or len(df.columns) == 0:
+        raise HTTPException(400, "CSV dataset contains no data rows or columns to profile.")
 
     try:
-        profile = profile_dataframe(df, dataset_name=file.filename)
+        safe_name = sanitize_filename(file.filename)
+        profile = profile_dataframe(df, dataset_name=safe_name)
         profile_dict = profile.model_dump() if hasattr(profile, "model_dump") else profile.dict()
         return sanitize({"status": "success", "data": profile_dict})
     except Exception as e:
-        raise HTTPException(500, f"Failed to profile dataset: {str(e)}")
+        logger.error(f"Profiling failed: {e}", exc_info=True)
+        raise HTTPException(500, "Failed to profile dataset.")
 
 
 @router.get("/data/list")
@@ -207,20 +239,34 @@ async def generate(req: GenerateRequest):
 @router.get("/generate/download/{job_id}")
 async def download_synthetic(job_id: str):
     """Download generated synthetic data as CSV."""
-    job = jobs_store.get(job_id)
+    clean_job_id = sanitize_filename(job_id).replace(".csv", "")
+    job = jobs_store.get(clean_job_id) or jobs_store.get(job_id)
     if not job:
         raise HTTPException(404, f"Job {job_id} not found")
     if job.get("status") != "completed":
         raise HTTPException(400, "Job not completed yet")
 
-    filepath = Path(job["result"]["output_file"])
+    out_file = job.get("result", {}).get("output_file")
+    if not out_file:
+        raise HTTPException(404, "Output file not recorded in job")
+
+    filepath = Path(out_file).resolve()
+    gen_dir = GENERATED_DIR.resolve()
+
+    # Ensure filepath is strictly inside GENERATED_DIR
+    try:
+        filepath.relative_to(gen_dir)
+    except ValueError:
+        raise HTTPException(403, "Access denied: file outside generated directory")
+
     if not filepath.exists():
         raise HTTPException(404, "Output file not found")
 
+    out_name = sanitize_filename(job["result"].get("output_filename", "synthetic.csv"))
     return FileResponse(
         filepath,
         media_type="text/csv",
-        filename=job["result"]["output_filename"],
+        filename=out_name,
     )
 
 
@@ -398,11 +444,21 @@ async def add_hospital(
     file: UploadFile = File(...),
 ):
     """Add a participant's data to a federation."""
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(400, "Only CSV files supported")
+    content = await _read_upload_file(file)
 
-    content = await file.read()
-    df = pd.read_csv(io.BytesIO(content))
+    try:
+        df = pd.read_csv(io.BytesIO(content))
+    except UnicodeDecodeError:
+        raise HTTPException(400, "Invalid file encoding. UTF-8 encoded CSV files are required.")
+    except pd.errors.EmptyDataError:
+        raise HTTPException(400, "Uploaded CSV contains no data.")
+    except pd.errors.ParserError:
+        raise HTTPException(400, "Malformed CSV format: unable to parse rows.")
+    except Exception as e:
+        raise HTTPException(400, f"Failed to parse CSV file: {str(e)}")
+
+    if df.empty or len(df) == 0 or len(df.columns) == 0:
+        raise HTTPException(400, "CSV dataset contains no data rows or columns.")
 
     # Drop identifier columns using centralized schema intelligence
     df = drop_identifier_columns(df)
@@ -415,6 +471,9 @@ async def add_hospital(
         return {"status": "success", "data": result}
     except ValueError as e:
         raise HTTPException(400, str(e))
+    except Exception as e:
+        logger.error(f"Failed to add participant to federation: {e}", exc_info=True)
+        raise HTTPException(500, "Failed to add participant data.")
 
 
 @router.post("/federated/train")

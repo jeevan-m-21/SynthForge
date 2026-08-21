@@ -1,4 +1,4 @@
-﻿"""
+"""
 MediSynth.AI — FastAPI Application Entry Point
 Privacy-Preserving Synthetic Tabular Data Platform
 """
@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from backend.api.routes import router
-from backend.config import FRONTEND_DIR
+from backend.config import FRONTEND_DIR, CORS_ORIGINS
 from backend.utils.logging_config import setup_logging
 
 
@@ -37,9 +37,9 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
