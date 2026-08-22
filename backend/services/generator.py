@@ -160,8 +160,12 @@ class StatisticalGenerator:
         else:
             self.correlation_matrix = None
 
-    def sample(self, num_rows: int) -> pd.DataFrame:
-        """Generate synthetic data from fitted distributions."""
+    def sample(self, num_rows: int, seed: Optional[int] = None) -> pd.DataFrame:
+        """
+        Generate synthetic data from fitted distributions.
+        Uses an isolated local RNG (np.random.default_rng) for reproducible sampling without modifying global state.
+        """
+        rng = np.random.default_rng(seed)
         data = {}
 
         # Correlated sampling for numeric & datetime columns
@@ -171,7 +175,7 @@ class StatisticalGenerator:
                     self.correlation_matrix +
                     np.eye(len(self._corr_cols)) * 1e-6
                 )
-                z = np.random.normal(0, 1, (num_rows, len(self._corr_cols)))
+                z = rng.normal(0, 1, (num_rows, len(self._corr_cols)))
                 correlated = z @ L.T
 
                 for i, col in enumerate(self._corr_cols):
@@ -204,7 +208,7 @@ class StatisticalGenerator:
 
             if ctype == "numeric":
                 stats = self.numeric_stats.get(col, {"mean": 0.0, "std": 1.0, "min": 0.0, "max": 1.0, "is_integer": False})
-                vals = np.random.normal(stats["mean"], stats["std"], num_rows)
+                vals = rng.normal(stats["mean"], stats["std"], num_rows)
                 vals = np.clip(vals, stats["min"], stats["max"])
                 if stats["is_integer"]:
                     vals = np.round(vals).astype(int)
@@ -212,7 +216,7 @@ class StatisticalGenerator:
 
             elif ctype == "datetime":
                 stats = self.datetime_stats.get(col, {"mean": 0.0, "std": 1.0, "min": 0.0, "max": 0.0, "is_native_dt": False, "sample_format": None})
-                ts_vals = np.random.normal(stats["mean"], stats["std"], num_rows)
+                ts_vals = rng.normal(stats["mean"], stats["std"], num_rows)
                 ts_vals = np.clip(ts_vals, stats["min"], stats["max"])
                 dt_vals = pd.to_datetime(ts_vals, unit="s")
                 if stats.get("is_native_dt"):
@@ -224,7 +228,7 @@ class StatisticalGenerator:
             elif ctype == "boolean":
                 stats = self.boolean_stats.get(col, {"p_true": 0.5, "rep_type": "bool"})
                 p = max(0.0, min(1.0, stats["p_true"]))
-                draws = np.random.random(num_rows) < p
+                draws = rng.random(num_rows) < p
                 rep = stats["rep_type"]
                 if rep == "bool":
                     data[col] = draws
@@ -241,7 +245,7 @@ class StatisticalGenerator:
 
             elif ctype == "text":
                 pool = self.text_stats.get(col, {}).get("pool", [""])
-                data[col] = np.random.choice(pool, size=num_rows)
+                data[col] = rng.choice(pool, size=num_rows)
 
             elif ctype == "categorical":
                 probs = self.categorical_probs.get(col, {"categories": [""], "probabilities": [1.0]})
@@ -249,7 +253,7 @@ class StatisticalGenerator:
                 p_vals = probs["probabilities"]
                 p_arr = np.array(p_vals, dtype=float)
                 p_arr = p_arr / p_arr.sum() if p_arr.sum() > 0 else None
-                data[col] = np.random.choice(cats, size=num_rows, p=p_arr)
+                data[col] = rng.choice(cats, size=num_rows, p=p_arr)
 
         res_df = pd.DataFrame(data)[self.columns]
 
@@ -257,16 +261,25 @@ class StatisticalGenerator:
         for col in self.columns:
             rate = self.missing_rates.get(col, 0.0)
             if 0.0 < rate < 1.0:
-                mask = np.random.random(num_rows) < rate
+                mask = rng.random(num_rows) < rate
                 res_df.loc[mask, col] = np.nan
 
         return res_df
 
 
 def _train_sdv_model(df: pd.DataFrame, model_type: str,
-                     epochs: int, batch_size: int) -> object:
-    """Train an SDV synthesizer (CTGAN or TVAE)."""
+                     epochs: int, batch_size: int,
+                     seed: Optional[int] = None) -> object:
+    """Train an SDV synthesizer (CTGAN or TVAE) with controlled CPU seeding when seed is provided."""
     try:
+        if seed is not None:
+            np.random.seed(seed)
+            try:
+                import torch
+                torch.manual_seed(seed)
+            except ImportError:
+                pass
+
         from sdv.single_table import CTGANSynthesizer, TVAESynthesizer
         from sdv.metadata import SingleTableMetadata
 
@@ -307,20 +320,22 @@ def generate_synthetic_data(
     delta: float = 1e-5,
     dp_mechanism: str = "gaussian",
     apply_dp: bool = True,
+    seed: Optional[int] = None,
 ) -> Dict:
     """
     Full profile-driven synthetic data generation pipeline:
     1. Load real data and profile schema
     2. Exclude detected identifier columns
-    3. Train generative model (CTGAN/TVAE/Statistical)
+    3. Train generative model (CTGAN/TVAE/Statistical) with optional seed
     4. Generate synthetic samples
     5. Apply differential privacy preserving target column
-    6. Save and return results
+    6. Save and return results with full job metadata
     """
     job_id = generate_job_id()
     create_job(job_id, dataset_id, "generation", {
         "num_rows": num_rows, "model_type": model_type,
         "epochs": epochs, "epsilon": epsilon, "delta": delta,
+        "seed": seed, "reproducible_run": seed is not None,
     })
 
     try:
@@ -354,7 +369,7 @@ def generate_synthetic_data(
         stat_model = None
 
         if model_type in ["ctgan", "tvae"]:
-            sdv_model = _train_sdv_model(working_df, model_type, epochs, batch_size)
+            sdv_model = _train_sdv_model(working_df, model_type, epochs, batch_size, seed=seed)
 
         if sdv_model is None:
             model_type = "statistical"
@@ -366,9 +381,16 @@ def generate_synthetic_data(
 
         # Step 4: Generate synthetic data
         if sdv_model:
+            if seed is not None:
+                np.random.seed(seed)
+                try:
+                    import torch
+                    torch.manual_seed(seed)
+                except ImportError:
+                    pass
             synthetic_df = sdv_model.sample(num_rows=num_rows)
         else:
-            synthetic_df = stat_model.sample(num_rows)
+            synthetic_df = stat_model.sample(num_rows, seed=seed)
 
         update_job(job_id, progress=85)
 
@@ -390,7 +412,7 @@ def generate_synthetic_data(
                 clip_bound=clip_bound,
             ))
             synthetic_df, dp_metadata = dp_processor.apply_dp(
-                synthetic_df, working_df, target_column=target_col
+                synthetic_df, working_df, target_column=target_col, seed=seed
             )
 
         # Step 6: Save synthetic data
@@ -409,7 +431,7 @@ def generate_synthetic_data(
         except Exception as e:
             logger.warning(f"Could not save model: {e}")
 
-        # Build result
+        # Build result with full job metadata
         result = {
             "job_id": job_id,
             "dataset_id": dataset_id,
@@ -422,6 +444,10 @@ def generate_synthetic_data(
             "training_time_seconds": round(train_time, 2),
             "dp_applied": apply_dp,
             "dp_metadata": dp_metadata,
+            "seed": seed,
+            "reproducible_run": seed is not None,
+            "epochs": epochs if model_type in ["ctgan", "tvae"] else None,
+            "batch_size": batch_size if model_type in ["ctgan", "tvae"] else None,
             "preview": synthetic_df.head(5).to_dict(orient="records"),
             "privacy_budget": PrivacyBudgetManager.get_or_create(dataset_id).to_dict()
                 if apply_dp else None,
@@ -436,7 +462,11 @@ def generate_synthetic_data(
             "model": model_type,
             "rows": num_rows,
             "epsilon": epsilon,
+            "seed": seed,
+            "reproducible_run": seed is not None,
         })
+
+        return result
 
         return result
 

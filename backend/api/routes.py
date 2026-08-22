@@ -227,6 +227,7 @@ async def generate(req: GenerateRequest):
                 delta=req.delta,
                 dp_mechanism=req.dp_mechanism,
                 apply_dp=req.apply_dp,
+                seed=req.seed,
             ),
             timeout=MAX_EXECUTION_TIMEOUT_SECONDS,
         )
@@ -543,6 +544,7 @@ async def federated_generate(req: FederatedGenerateRequest):
                 FederationManager.generate_from_federation,
                 req.federation_id,
                 req.num_rows,
+                seed=req.seed,
             ),
             timeout=MAX_EXECUTION_TIMEOUT_SECONDS,
         )

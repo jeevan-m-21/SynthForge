@@ -36,6 +36,7 @@ class GenerateRequest(BaseModel):
     delta: float = Field(default=1e-5, gt=0, lt=1)
     dp_mechanism: str = Field(default="gaussian", pattern="^(gaussian|laplace)$")
     apply_dp: bool = True
+    seed: Optional[int] = Field(default=None, ge=0, le=2**32 - 1)
 
 
 class GenerateResponse(BaseModel):
@@ -99,6 +100,7 @@ class FederatedTrainRequest(BaseModel):
 class FederatedGenerateRequest(BaseModel):
     federation_id: str
     num_rows: int = Field(default=1000, ge=10, le=MAX_SYNTH_ROWS)
+    seed: Optional[int] = Field(default=None, ge=0, le=2**32 - 1)
 
 
 # ──────────────────────────────────────────────
