@@ -2,6 +2,7 @@
 MediSynth.AI — Synthetic Data Generator
 Supports CTGAN, TVAE, and statistical fallback with DP noise integration.
 """
+import os
 import pandas as pd
 import numpy as np
 import pickle
@@ -415,20 +416,38 @@ def generate_synthetic_data(
                 synthetic_df, working_df, target_column=target_col, seed=seed
             )
 
-        # Step 6: Save synthetic data
+        # Step 6: Save synthetic data atomically
         output_filename = f"{dataset_id}_{model_type}_{job_id}.csv"
         output_path = GENERATED_DIR / output_filename
-        synthetic_df.to_csv(output_path, index=False)
+        temp_csv_path = GENERATED_DIR / f".tmp_{job_id}_{output_filename}"
+        try:
+            synthetic_df.to_csv(temp_csv_path, index=False)
+            os.replace(temp_csv_path, output_path)
+        except Exception:
+            if temp_csv_path.exists():
+                try:
+                    temp_csv_path.unlink()
+                except OSError:
+                    pass
+            raise
 
-        # Save model
+        # Save model atomically
         model_path = MODELS_DIR / f"{job_id}_model.pkl"
+        temp_model_path = MODELS_DIR / f".tmp_{job_id}_model.pkl"
         try:
             if sdv_model:
-                sdv_model.save(str(model_path))
+                sdv_model.save(str(temp_model_path))
+                os.replace(temp_model_path, model_path)
             elif stat_model:
-                with open(model_path, "wb") as f:
+                with open(temp_model_path, "wb") as f:
                     pickle.dump(stat_model, f)
+                os.replace(temp_model_path, model_path)
         except Exception as e:
+            if temp_model_path.exists():
+                try:
+                    temp_model_path.unlink()
+                except OSError:
+                    pass
             logger.warning(f"Could not save model: {e}")
 
         # Build result with full job metadata

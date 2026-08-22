@@ -136,7 +136,8 @@ def record_privacy_spend(dataset_id: str, epsilon: float, delta: float,
 
 
 def create_job(job_id: str, dataset_id: str, job_type: str, params: Dict):
-    """Create a new job record."""
+    """Create a new job record with created_at and updated_at timestamps."""
+    now = now_iso()
     jobs_store.set(job_id, {
         "id": job_id,
         "dataset_id": dataset_id,
@@ -146,14 +147,66 @@ def create_job(job_id: str, dataset_id: str, job_type: str, params: Dict):
         "progress": 0,
         "result": None,
         "error": None,
-        "created_at": now_iso(),
+        "created_at": now,
+        "updated_at": now,
         "completed_at": None,
     })
 
 
 def update_job(job_id: str, **kwargs):
-    """Update job status/result."""
+    """Update job status/result, automatically recording updated_at timestamp."""
+    if "updated_at" not in kwargs:
+        kwargs["updated_at"] = now_iso()
     jobs_store.update(job_id, kwargs)
+
+
+def reconcile_stale_jobs(stale_timeout_seconds: Optional[int] = None) -> List[str]:
+    """
+    Reconcile stale/interrupted jobs on application startup or recovery.
+    - Scans persisted jobs
+    - Finds jobs left with status == 'running'
+    - Transitions them to 'interrupted' status
+    - Preserves all original job parameters, result, and metadata
+    - Idempotent and defensive against corrupted records
+    """
+    reconciled_ids = []
+    try:
+        all_jobs = jobs_store.list_all()
+    except Exception:
+        return []
+
+    now_str = now_iso()
+    now_dt = datetime.now(timezone.utc)
+
+    for job_id, job in list(all_jobs.items()):
+        if not isinstance(job, dict):
+            continue
+
+        status = job.get("status")
+        if status == "running":
+            # If stale_timeout_seconds is given, only reconcile if (now - updated_at) >= timeout
+            if stale_timeout_seconds is not None:
+                updated_at_str = job.get("updated_at") or job.get("created_at")
+                if updated_at_str:
+                    try:
+                        updated_dt = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+                        if (now_dt - updated_dt).total_seconds() < stale_timeout_seconds:
+                            continue
+                    except Exception:
+                        pass
+
+            # Mark job as interrupted
+            job["status"] = "interrupted"
+            job["error"] = "Job interrupted by server shutdown or process termination"
+            job["completed_at"] = now_str
+            job["updated_at"] = now_str
+            try:
+                jobs_store.set(job_id, job)
+                reconciled_ids.append(job_id)
+            except Exception:
+                pass
+
+    return reconciled_ids
 
 
 def save_report(report_id: str, report_type: str, dataset_id: str,

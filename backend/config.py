@@ -44,6 +44,7 @@ MAX_EXECUTION_TIMEOUT_SECONDS = int(os.getenv("SYNTH_MAX_TIMEOUT_SECONDS", "300"
 MAX_ATTACK_SAMPLE_SIZE = int(os.getenv("SYNTH_MAX_ATTACK_SAMPLE_SIZE", "5000"))
 MAX_CAT_COLS_FOR_ASSOC = int(os.getenv("SYNTH_MAX_CAT_COLS_FOR_ASSOC", "30"))
 SYNTH_MAX_WORKERS = int(os.getenv("SYNTH_MAX_WORKERS", "4"))
+JOB_STALE_TIMEOUT_SECONDS = int(os.getenv("JOB_STALE_TIMEOUT_SECONDS", "600"))
 
 # ──────────────────────────────────────────────
 # Upload Limits

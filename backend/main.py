@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse
 from backend.api.routes import router
 from backend.config import FRONTEND_DIR, CORS_ORIGINS
 from backend.utils.logging_config import setup_logging
+from backend.models.database import reconcile_stale_jobs
 
 
 @asynccontextmanager
@@ -18,6 +19,12 @@ async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
     logger = setup_logging()
     logger.info("MediSynth.AI starting up...")
+    try:
+        reconciled = reconcile_stale_jobs()
+        if reconciled:
+            logger.info(f"Reconciled {len(reconciled)} stale/interrupted job(s) from previous process: {reconciled}")
+    except Exception as e:
+        logger.error(f"Startup job reconciliation encountered an error: {e}", exc_info=True)
     yield
     logger.info("MediSynth.AI shutting down...")
 
