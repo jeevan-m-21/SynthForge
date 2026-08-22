@@ -1,7 +1,8 @@
-﻿"""
+"""
 MediSynth.AI — Data Ingestion & Preprocessing Service
 Handles CSV upload, validation, metadata detection, and preprocessing.
 """
+import io
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -9,7 +10,11 @@ from typing import Dict, List, Optional, Tuple
 
 from backend.config import UPLOAD_DIR
 from backend.utils.logging_config import get_logger, audit_log
-from backend.utils.security import generate_dataset_id, compute_data_fingerprint
+from backend.utils.security import (
+    generate_dataset_id,
+    compute_data_fingerprint,
+    sanitize_filename,
+)
 from backend.models.database import register_dataset, datasets_store
 from backend.services.schema_intelligence import get_identifier_columns
 
@@ -64,19 +69,39 @@ def preprocess_dataframe(df: pd.DataFrame,
 
 def ingest_csv(file_content: bytes, filename: str) -> Dict:
     """
-    Ingest a CSV file: save, parse, detect types, register.
+    Ingest a CSV file: validate, sanitize filename, parse, detect types, register.
 
     Returns dataset metadata dict.
     """
+    if not file_content or len(file_content) == 0:
+        raise ValueError("Uploaded file is empty.")
+
+    safe_filename = sanitize_filename(filename)
+
+    # Validate encoding & parse CSV in-memory before writing to disk
+    try:
+        df = pd.read_csv(io.BytesIO(file_content))
+    except UnicodeDecodeError:
+        raise ValueError("Invalid file encoding. UTF-8 encoded CSV files are required.")
+    except pd.errors.EmptyDataError:
+        raise ValueError("Uploaded CSV contains no data.")
+    except pd.errors.ParserError:
+        raise ValueError("Malformed CSV format: unable to parse rows.")
+    except Exception as e:
+        raise ValueError(f"Failed to parse CSV file: {str(e)}")
+
+    if df.empty or len(df) == 0:
+        raise ValueError("Uploaded CSV contains no data rows (header only or empty).")
+
+    if len(df.columns) == 0:
+        raise ValueError("Uploaded CSV contains no columns.")
+
     dataset_id = generate_dataset_id()
     fingerprint = compute_data_fingerprint(file_content)
 
-    # Save raw file
-    filepath = UPLOAD_DIR / f"{dataset_id}_{filename}"
+    # Save sanitized file
+    filepath = UPLOAD_DIR / f"{dataset_id}_{safe_filename}"
     filepath.write_bytes(file_content)
-
-    # Parse CSV
-    df = pd.read_csv(filepath)
 
     # Detect identifier-like columns using shared generic heuristics.
     id_cols = get_identifier_columns(df)
@@ -87,7 +112,7 @@ def ingest_csv(file_content: bytes, filename: str) -> Dict:
     # Register in database
     register_dataset(
         dataset_id=dataset_id,
-        filename=filename,
+        filename=safe_filename,
         filepath=str(filepath),
         num_rows=len(df),
         num_cols=len(df.columns),
@@ -98,7 +123,7 @@ def ingest_csv(file_content: bytes, filename: str) -> Dict:
 
     audit_log(logger, "data_ingested", {
         "dataset_id": dataset_id,
-        "filename": filename,
+        "filename": safe_filename,
         "rows": len(df),
         "columns": len(df.columns),
     })

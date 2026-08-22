@@ -8,6 +8,7 @@ Mathematical Guarantees:
 - Rényi DP Accountant: tight composition bounds across multiple queries
 """
 import math
+import threading
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Optional, Tuple
@@ -106,18 +107,23 @@ class LaplaceMechanism:
         return sensitivity / epsilon
 
     @staticmethod
-    def add_noise(value: float, sensitivity: float, epsilon: float) -> float:
+    def add_noise(value: float, sensitivity: float, epsilon: float,
+                  rng: Optional[np.random.Generator] = None) -> float:
         """Add Laplace noise to a single value."""
         scale = LaplaceMechanism.compute_scale(sensitivity, epsilon)
-        noise = np.random.laplace(0, scale)
+        noise = float(rng.laplace(0, scale)) if rng is not None else float(np.random.laplace(0, scale))
         return value + noise
 
     @staticmethod
     def add_noise_array(values: np.ndarray, sensitivity: float,
-                        epsilon: float) -> np.ndarray:
-        """Add Laplace noise to an array of values."""
+                        epsilon: float,
+                        rng: Optional[np.random.Generator] = None) -> np.ndarray:
+        """Add Laplace noise to an array of values using optional local RNG."""
         scale = LaplaceMechanism.compute_scale(sensitivity, epsilon)
-        noise = np.random.laplace(0, scale, size=values.shape)
+        if rng is not None:
+            noise = rng.laplace(0, scale, size=values.shape)
+        else:
+            noise = np.random.laplace(0, scale, size=values.shape)
         return values + noise
 
 
@@ -139,18 +145,23 @@ class GaussianMechanism:
 
     @staticmethod
     def add_noise(value: float, sensitivity: float, epsilon: float,
-                  delta: float) -> float:
+                  delta: float,
+                  rng: Optional[np.random.Generator] = None) -> float:
         """Add Gaussian noise to a single value."""
         sigma = GaussianMechanism.compute_sigma(sensitivity, epsilon, delta)
-        noise = np.random.normal(0, sigma)
+        noise = float(rng.normal(0, sigma)) if rng is not None else float(np.random.normal(0, sigma))
         return value + noise
 
     @staticmethod
     def add_noise_array(values: np.ndarray, sensitivity: float,
-                        epsilon: float, delta: float) -> np.ndarray:
-        """Add Gaussian noise to an array of values."""
+                        epsilon: float, delta: float,
+                        rng: Optional[np.random.Generator] = None) -> np.ndarray:
+        """Add Gaussian noise to an array of values using optional local RNG."""
         sigma = GaussianMechanism.compute_sigma(sensitivity, epsilon, delta)
-        noise = np.random.normal(0, sigma, size=values.shape)
+        if rng is not None:
+            noise = rng.normal(0, sigma, size=values.shape)
+        else:
+            noise = np.random.normal(0, sigma, size=values.shape)
         return values + noise
 
 
@@ -247,29 +258,42 @@ class DPDataProcessor:
         return len(unique) <= 2 and set(unique).issubset({0, 1, 0.0, 1.0})
 
     def _randomized_response(self, value, domain: list,
-                             epsilon: float) -> object:
+                             epsilon: float,
+                             rng: Optional[np.random.Generator] = None) -> object:
         """Randomized response for categorical data (e-DP)."""
         p = math.exp(epsilon) / (math.exp(epsilon) + len(domain) - 1)
-        if np.random.random() < p:
+        rand_val = rng.random() if rng is not None else np.random.random()
+        if rand_val < p:
             return value
         else:
             other = [v for v in domain if v != value]
-            return np.random.choice(other) if other else value
+            if not other:
+                return value
+            if rng is not None:
+                return rng.choice(other)
+            return np.random.choice(other)
 
     def apply_dp(self, df: pd.DataFrame,
                  real_df: pd.DataFrame,
-                 target_column: Optional[str] = None) -> Tuple[pd.DataFrame, Dict]:
+                 target_column: Optional[str] = None,
+                 seed: Optional[int] = None) -> Tuple[pd.DataFrame, Dict]:
         """
         Apply differential privacy to a synthetic DataFrame.
+
+        SECURITY & PRIVACY NOTE:
+        Controlled seeds are strictly intended for reproducible benchmarking and testing.
+        Production privacy-preserving releases must leave seed=None to ensure fresh cryptographic noise.
 
         Args:
             df: Synthetic data to protect
             real_df: Original real data (for sensitivity estimation)
             target_column: Optional detected target column name to preserve
+            seed: Optional random seed for reproducible testing/experimentation
 
         Returns:
             Tuple of (protected DataFrame, privacy metadata)
         """
+        rng = np.random.default_rng(seed) if seed is not None else None
         result = df.copy()
         epsilon = self.params.epsilon
         delta = self.params.delta
@@ -296,7 +320,7 @@ class DPDataProcessor:
             if pd.api.types.is_bool_dtype(result[col]):
                 domain = [True, False]
                 result[col] = result[col].apply(
-                    lambda v: self._randomized_response(v, domain, per_col_epsilon)
+                    lambda v: self._randomized_response(v, domain, per_col_epsilon, rng=rng)
                 )
                 column_info[col] = {
                     "type": "boolean",
@@ -313,7 +337,7 @@ class DPDataProcessor:
                 if self.params.mechanism == "laplace":
                     result[col] = LaplaceMechanism.add_noise_array(
                         result[col].values.astype(float),
-                        sensitivity, per_col_epsilon
+                        sensitivity, per_col_epsilon, rng=rng
                     )
                 else:
                     sigma = GaussianMechanism.compute_sigma(
@@ -321,7 +345,7 @@ class DPDataProcessor:
                     )
                     result[col] = GaussianMechanism.add_noise_array(
                         result[col].values.astype(float),
-                        sensitivity, per_col_epsilon, per_col_delta
+                        sensitivity, per_col_epsilon, per_col_delta, rng=rng
                     )
                     self.accountant.step(sensitivity, sigma)
 
@@ -345,7 +369,7 @@ class DPDataProcessor:
                 # Categorical: randomized response
                 domain = real_df[col].dropna().unique().tolist()
                 result[col] = result[col].apply(
-                    lambda v: self._randomized_response(v, domain, per_col_epsilon)
+                    lambda v: self._randomized_response(v, domain, per_col_epsilon, rng=rng)
                 )
                 column_info[col] = {
                     "type": "categorical",
@@ -383,45 +407,54 @@ class DPDataProcessor:
 # Budget Manager (Singleton-like)
 # ──────────────────────────────────────────────
 class PrivacyBudgetManager:
-    """Manages per-dataset privacy budgets."""
+    """Manages per-dataset privacy budgets with thread-safe atomic check-and-spend."""
 
     _budgets: Dict[str, PrivacyBudgetState] = {}
+    _lock = threading.Lock()
 
     @classmethod
     def get_or_create(cls, dataset_id: str,
                       max_epsilon: float = MAX_EPSILON_BUDGET
                       ) -> PrivacyBudgetState:
-        if dataset_id not in cls._budgets:
-            cls._budgets[dataset_id] = PrivacyBudgetState(
-                dataset_id=dataset_id, max_epsilon=max_epsilon
-            )
-        return cls._budgets[dataset_id]
+        with cls._lock:
+            if dataset_id not in cls._budgets:
+                cls._budgets[dataset_id] = PrivacyBudgetState(
+                    dataset_id=dataset_id, max_epsilon=max_epsilon
+                )
+            return cls._budgets[dataset_id]
 
     @classmethod
     def spend(cls, dataset_id: str, epsilon: float, delta: float,
               operation: str) -> Tuple[bool, PrivacyBudgetState]:
-        """Attempt to spend privacy budget. Returns (success, state)."""
-        budget = cls.get_or_create(dataset_id)
-        if not budget.can_spend(epsilon):
-            logger.warning(
-                f"Privacy budget exhausted for dataset {dataset_id}. "
-                f"Requested ε={epsilon}, remaining ε={budget.remaining_epsilon}"
-            )
-            return False, budget
-        budget.record_spend(epsilon, delta, operation)
+        """Atomically check and spend privacy budget under lock to prevent TOCTOU race conditions."""
+        with cls._lock:
+            if dataset_id not in cls._budgets:
+                cls._budgets[dataset_id] = PrivacyBudgetState(
+                    dataset_id=dataset_id, max_epsilon=MAX_EPSILON_BUDGET
+                )
+            budget = cls._budgets[dataset_id]
+            if not budget.can_spend(epsilon):
+                logger.warning(
+                    f"Privacy budget exhausted for dataset {dataset_id}. "
+                    f"Requested ε={epsilon}, remaining ε={budget.remaining_epsilon}"
+                )
+                return False, budget
+            budget.record_spend(epsilon, delta, operation)
 
-        if budget.warning_level:
-            logger.warning(
-                f"Privacy budget warning ({budget.warning_level}) for "
-                f"dataset {dataset_id}: {budget.utilization_pct:.1f}% used"
-            )
+            if budget.warning_level:
+                logger.warning(
+                    f"Privacy budget warning ({budget.warning_level}) for "
+                    f"dataset {dataset_id}: {budget.utilization * 100:.1f}% used"
+                )
 
-        return True, budget
+            return True, budget
 
     @classmethod
     def get_budget(cls, dataset_id: str) -> Optional[PrivacyBudgetState]:
-        return cls._budgets.get(dataset_id)
+        with cls._lock:
+            return cls._budgets.get(dataset_id)
 
     @classmethod
     def get_all_budgets(cls) -> Dict[str, Dict]:
-        return {k: v.to_dict() for k, v in cls._budgets.items()}
+        with cls._lock:
+            return {k: v.to_dict() for k, v in cls._budgets.items()}

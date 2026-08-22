@@ -1,4 +1,4 @@
-﻿"""
+"""
 MediSynth.AI — Structured Logging
 """
 import logging
@@ -45,9 +45,33 @@ def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(f"MediSynth.AI.{name}")
 
 
+SENSITIVE_LOG_KEYS = {"encryption_key", "secret", "password", "token", "key", "auth", "raw_data"}
+
+
+def sanitize_log_dict(d: dict) -> dict:
+    """Recursively scrub sensitive keys and protect logs from information leakage."""
+    if not isinstance(d, dict):
+        return d
+    sanitized = {}
+    for k, v in d.items():
+        if any(sens in k.lower() for sens in SENSITIVE_LOG_KEYS):
+            sanitized[k] = "[REDACTED]"
+        elif isinstance(v, dict):
+            sanitized[k] = sanitize_log_dict(v)
+        elif isinstance(v, list):
+            sanitized[k] = [sanitize_log_dict(item) if isinstance(item, dict) else item for item in v]
+        elif k.lower() in ["filename", "file_name"] and isinstance(v, str):
+            from backend.utils.security import sanitize_filename
+            sanitized[k] = sanitize_filename(v)
+        else:
+            sanitized[k] = v
+    return sanitized
+
+
 def audit_log(logger: logging.Logger, action: str, details: dict):
-    """Log a privacy-sensitive operation for audit trail."""
+    """Log a privacy-sensitive operation for audit trail with sensitive value scrubbing."""
+    safe_details = sanitize_log_dict(details)
     logger.info(
         f"AUDIT: {action}",
-        extra={"extra_data": {"action": action, "details": details}},
+        extra={"extra_data": {"action": action, "details": safe_details}},
     )
