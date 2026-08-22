@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MediSynth.AI — Chart Utilities (Chart.js)
  */
 const ChartColors = {

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MediSynth.AI — Main Application
  */
 const state = { datasetId: null, jobId: null, federationId: null, loading: false };
@@ -71,8 +71,8 @@ function renderDatasetInfo(data) {
     <tbody>${(data.preview || []).map(r => `<tr>${data.columns.map(c => `<td>${r[c] ?? ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>
     <div class="card"><div class="card-title">📊 Column Types</div>
     <div class="grid grid-4">${Object.entries(data.column_types).map(([k, v]) =>
-      `<div class="stat-card"><div class="stat-label">${k}</div><span class="badge badge-${v === 'numerical' ? 'info' : v === 'boolean' ? 'purple' : 'warning'}">${v}</span></div>`
-    ).join('')}</div></div>`;
+    `<div class="stat-card"><div class="stat-label">${k}</div><span class="badge badge-${v === 'numerical' ? 'info' : v === 'boolean' ? 'purple' : 'warning'}">${v}</span></div>`
+  ).join('')}</div></div>`;
   document.getElementById('gen-dataset-id').value = data.dataset_id;
 }
 
@@ -161,12 +161,12 @@ function renderStatResults(data) {
     <div class="card" style="margin-top:1rem"><div class="card-title">📊 Per-Column KS Test</div>
     <table class="data-table"><thead><tr><th>Column</th><th>Type</th><th>KS / χ² Statistic</th><th>P-Value</th><th>Similar?</th><th>Score</th></tr></thead>
     <tbody>${Object.entries(data.column_reports).map(([col, r]) => {
-      const test = r.ks_test || r.chi_squared || {};
-      return `<tr><td>${col}</td><td><span class="badge badge-${r.type === 'numerical' ? 'info' : 'warning'}">${r.type}</span></td>
+    const test = r.ks_test || r.chi_squared || {};
+    return `<tr><td>${col}</td><td><span class="badge badge-${r.type === 'numerical' ? 'info' : 'warning'}">${r.type}</span></td>
       <td>${test.statistic?.toFixed(4) ?? '-'}</td><td>${test.p_value?.toFixed(4) ?? '-'}</td>
       <td>${test.similar ? '<span class="badge badge-success">Yes</span>' : '<span class="badge badge-danger">No</span>'}</td>
       <td>${r.quality_score?.toFixed(1)}</td></tr>`;
-    }).join('')}</tbody></table></div>
+  }).join('')}</tbody></table></div>
     ${data.correlation?.columns?.length > 1 ? `
     <div class="grid grid-2">
       <div class="card"><div class="card-title">🔵 Real Correlation</div><div id="heatmap-real" class="heatmap-container"></div></div>
@@ -330,8 +330,8 @@ async function federatedGenerate() {
     const res = await api.federatedGenerate({ federation_id: state.federationId, num_rows: rows });
     toast(`Generated ${res.data.num_rows} federated synthetic rows`);
     document.getElementById('fed-gen-result').innerHTML = `<div class="card"><div class="card-title">✅ Generated ${res.data.num_rows} rows from ${res.data.num_hospitals} hospitals</div>
-      <table class="data-table"><thead><tr>${Object.keys(res.data.preview[0]||{}).map(k=>`<th>${k}</th>`).join('')}</tr></thead>
-      <tbody>${res.data.preview.map(r=>`<tr>${Object.values(r).map(v=>`<td>${typeof v==='number'?v.toFixed?.(2)??v:v}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+      <table class="data-table"><thead><tr>${Object.keys(res.data.preview[0] || {}).map(k => `<th>${k}</th>`).join('')}</tr></thead>
+      <tbody>${res.data.preview.map(r => `<tr>${Object.values(r).map(v => `<td>${typeof v === 'number' ? v.toFixed?.(2) ?? v : v}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   } catch (e) { toast(e.message, 'error'); }
   hideLoading();
 }
