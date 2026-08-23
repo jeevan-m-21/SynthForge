@@ -772,6 +772,138 @@ body::before {
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading-text { margin-top: 1rem; color: var(--text-primary); font-size: 0.9rem; font-weight: 500; }
 
+/* Progress Modal */
+.progress-modal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius);
+  padding: 2.5rem 2rem;
+  max-width: 440px;
+  width: 90%;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.progress-modal-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.4rem;
+}
+.progress-modal-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+.progress-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.2rem;
+}
+.progress-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  transition: var(--transition);
+}
+.progress-step .step-status-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+.progress-step.done {
+  color: var(--text-primary);
+}
+.progress-step.done .step-status-icon {
+  color: var(--accent-green);
+}
+.progress-step.active {
+  color: var(--accent-blue);
+  font-weight: 600;
+}
+.progress-step.active .step-status-icon {
+  color: var(--accent-blue);
+  animation: pulse 1s infinite alternate;
+}
+@keyframes pulse { from { opacity: 0.5; transform: scale(0.9); } to { opacity: 1; transform: scale(1.1); } }
+.progress-step.pending {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+/* Synthesize UX Utilities */
+.sample-data-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 1rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.dataset-summary-card {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  padding: 1.2rem 1.4rem;
+  margin-top: 1.2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.dataset-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.dataset-summary-check {
+  width: 32px;
+  height: 32px;
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-green);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+}
+.dataset-summary-filename {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.dataset-summary-meta {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+.dataset-summary-ready {
+  font-size: 0.78rem;
+  color: var(--accent-green);
+  font-weight: 600;
+}
+#btn-generate {
+  align-self: flex-start;
+  min-width: 240px;
+  width: auto;
+  max-width: 320px;
+}
+
 /* Toast */
 .toast-container { position: fixed; top: 80px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
 .toast {

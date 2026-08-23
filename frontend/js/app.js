@@ -123,7 +123,7 @@ function hideLoading() {
   if (overlay) overlay.style.display = 'none';
 }
 
-// ── Generation Mode Selection ──
+// ── Generation Mode & Model Architecture ──
 function selectGenerationMode(mode) {
   state.selectedMode = mode;
   const modeInput = document.getElementById('gen-selected-mode');
@@ -146,20 +146,78 @@ function selectGenerationMode(mode) {
     fastCard?.setAttribute('aria-checked', 'false');
     if (modelSelect) modelSelect.value = 'tvae';
   }
+  onModelArchitectureChange();
+}
+
+function onModelArchitectureChange() {
+  const model = document.getElementById('gen-model')?.value || 'statistical';
+  const epochsGroup = document.getElementById('adv-epochs-group');
+  const batchGroup = document.getElementById('adv-batch-group');
+  const isDeep = model === 'tvae' || model === 'ctgan';
+
+  if (epochsGroup) epochsGroup.style.display = isDeep ? 'block' : 'none';
+  if (batchGroup) batchGroup.style.display = isDeep ? 'block' : 'none';
+}
+
+// ── Multi-Step Generation Progress Helpers ──
+function showGenerationProgress(mode) {
+  state.loading = true;
+  const overlay = document.getElementById('generation-progress-overlay');
+  const pstep3Text = document.getElementById('pstep-3-text');
+  const pstep3 = document.getElementById('pstep-3');
+  const pstep4 = document.getElementById('pstep-4');
+  const pstep5 = document.getElementById('pstep-5');
+
+  if (pstep3Text) {
+    pstep3Text.textContent = mode === 'high' ? 'Training deep neural model & creating records' : 'Synthesizing empirical distributions';
+  }
+
+  // Reset step states
+  if (pstep3) pstep3.className = 'progress-step active';
+  if (pstep4) pstep4.className = 'progress-step pending';
+  if (pstep5) pstep5.className = 'progress-step pending';
+
+  if (overlay) overlay.style.display = 'flex';
+}
+
+function updateGenerationStep(stepNum) {
+  for (let i = 1; i <= 5; i++) {
+    const stepEl = document.getElementById(`pstep-${i}`);
+    if (!stepEl) continue;
+    if (i < stepNum) {
+      stepEl.className = 'progress-step done';
+      const icon = stepEl.querySelector('.step-status-icon');
+      if (icon) icon.textContent = '✓';
+    } else if (i === stepNum) {
+      stepEl.className = 'progress-step active';
+      const icon = stepEl.querySelector('.step-status-icon');
+      if (icon) icon.textContent = '●';
+    } else {
+      stepEl.className = 'progress-step pending';
+      const icon = stepEl.querySelector('.step-status-icon');
+      if (icon) icon.textContent = '○';
+    }
+  }
+}
+
+function hideGenerationProgress() {
+  state.loading = false;
+  const overlay = document.getElementById('generation-progress-overlay');
+  if (overlay) overlay.style.display = 'none';
 }
 
 // ── Dataset Upload & Sample Loading ──
 async function handleFileUpload(file) {
   if (!file || !file.name.toLowerCase().endsWith('.csv')) {
-    toast('Please select a valid CSV file.', 'error');
+    toast("That CSV couldn't be processed. Check that the file contains a valid table and try again.", 'error');
     return;
   }
   if (file.size > 50 * 1024 * 1024) {
-    toast('File size exceeds the 50 MB upload limit.', 'error');
+    toast('This file is larger than the 50 MB upload limit.', 'error');
     return;
   }
 
-  showLoading('Uploading and profiling dataset schema...');
+  showLoading('Uploading and analyzing dataset schema...');
   try {
     const res = await api.uploadFile(file);
     // Reset previous generation state on new upload
@@ -170,9 +228,9 @@ async function handleFileUpload(file) {
     state.lastQualityReport = null;
 
     renderDatasetInfo(res.data);
-    toast(`Dataset uploaded: ${res.data.num_rows.toLocaleString()} rows, ${res.data.num_cols} columns`);
+    toast(`Dataset uploaded: ${res.data.num_rows.toLocaleString()} records, ${res.data.num_cols} columns`);
   } catch (e) {
-    toast(e.message, 'error');
+    toast(e.message || "That CSV couldn't be processed. Check that the file contains a valid table and try again.", 'error');
   }
   hideLoading();
 }
@@ -189,9 +247,9 @@ async function loadSampleData() {
     state.lastQualityReport = null;
 
     renderDatasetInfo(res.data);
-    toast(`Sample healthcare data loaded: ${res.data.num_rows.toLocaleString()} rows`);
+    toast(`Sample healthcare data loaded: ${res.data.num_rows.toLocaleString()} records`);
   } catch (e) {
-    toast(e.message, 'error');
+    toast(e.message || 'Could not load sample data. Please try again.', 'error');
   }
   hideLoading();
 }
@@ -201,16 +259,17 @@ function renderDatasetInfo(data) {
   if (!el) return;
 
   el.innerHTML = `
-    <div class="grid grid-3" style="margin-top:1.2rem">
-      <div class="stat-card"><div class="stat-label">Selected Dataset</div><div class="stat-value blue" style="font-size:1.25rem">${data.filename}</div></div>
-      <div class="stat-card"><div class="stat-label">Total Records</div><div class="stat-value green">${data.num_rows.toLocaleString()}</div></div>
-      <div class="stat-card"><div class="stat-label">Attributes</div><div class="stat-value purple">${data.num_cols} Columns</div></div>
-    </div>
-    <div class="card" style="margin-top:1rem;background:rgba(255,255,255,0.02)">
-      <div class="card-title" style="font-size:0.9rem">📋 Schema Attributes Preview</div>
-      <div class="grid grid-4">${Object.entries(data.column_types || {}).map(([k, v]) =>
-        `<div class="stat-card"><div class="stat-label">${k}</div><span class="badge badge-${v === 'numerical' ? 'info' : v === 'boolean' ? 'purple' : 'warning'}">${v}</span></div>`
-      ).join('')}</div>
+    <div class="dataset-summary-card">
+      <div class="dataset-summary-header">
+        <div class="dataset-summary-check">✓</div>
+        <div>
+          <div class="dataset-summary-filename">${data.filename}</div>
+          <div class="dataset-summary-meta">${data.num_rows.toLocaleString()} records · ${data.num_cols} attributes</div>
+        </div>
+      </div>
+      <div class="dataset-summary-ready">
+        ● Dataset successfully analyzed and ready for synthesis
+      </div>
     </div>`;
 
   const genIdInput = document.getElementById('gen-dataset-id');
@@ -224,6 +283,8 @@ function renderDatasetInfo(data) {
 
 // ── Synthetic Data Generation (Goal-Oriented Flow) ──
 async function generateData() {
+  if (state.generating) return;
+
   const dsId = document.getElementById('gen-dataset-id')?.value || state.datasetId;
   if (!dsId) {
     toast('Please upload or select a dataset first.', 'error');
@@ -232,7 +293,7 @@ async function generateData() {
 
   const numRows = parseInt(document.getElementById('gen-rows')?.value, 10) || 1000;
   if (numRows < 10 || numRows > 100000) {
-    toast('Number of rows must be between 10 and 100,000.', 'error');
+    toast('Number of synthetic records must be between 10 and 100,000.', 'error');
     return;
   }
 
@@ -258,13 +319,13 @@ async function generateData() {
   const rawSeed = document.getElementById('gen-seed')?.value?.trim();
   const seed = rawSeed !== '' && rawSeed !== undefined ? parseInt(rawSeed, 10) : undefined;
 
-  const loadingMsg = mode === 'fast'
-    ? 'Generating synthetic data with Fast Statistical Copula modeling...'
-    : 'Training deep generative model (TVAE)... This may take 1-2 minutes on CPU.';
-  showLoading(loadingMsg);
-
+  state.generating = true;
   const btn = document.getElementById('btn-generate');
+  const btnText = document.getElementById('btn-generate-text');
   if (btn) btn.disabled = true;
+  if (btnText) btnText.textContent = 'Generating...';
+
+  showGenerationProgress(mode);
 
   try {
     const payload = {
@@ -282,20 +343,31 @@ async function generateData() {
       payload.seed = seed;
     }
 
+    // Step 4: Applying Differential Privacy
+    setTimeout(() => updateGenerationStep(4), 500);
+
     const res = await api.generate(payload);
     state.jobId = res.data.job_id;
     state.lastGenResult = res.data;
 
+    // Step 5: Preparing Quality Report
+    updateGenerationStep(5);
+
     toast(`Successfully generated ${res.data.num_rows_generated.toLocaleString()} synthetic records!`);
 
-    // Phase 8 Workflow: Automatically switch to Quality Report and evaluate
-    switchTab('tab-quality');
-    await runQualityEvaluation();
+    // Automatic transition to Quality Report
+    setTimeout(async () => {
+      hideGenerationProgress();
+      switchTab('tab-quality');
+      await runQualityEvaluation();
+    }, 400);
   } catch (e) {
-    toast(e.message, 'error');
-    hideLoading();
+    toast(e.message || 'Generation failed. Please check parameters and try again.', 'error');
+    hideGenerationProgress();
   } finally {
+    state.generating = false;
     if (btn) btn.disabled = false;
+    if (btnText) btnText.textContent = 'Generate Synthetic Data';
   }
 }
 
@@ -807,6 +879,9 @@ function retryJob(jobId) {
 document.addEventListener('DOMContentLoaded', () => {
   // Theme initialization
   initTheme();
+
+  // Initialize advanced settings visibility
+  onModelArchitectureChange();
 
   // Tab navigation bindings
   document.querySelectorAll('.nav-tab').forEach(tab => {

@@ -19,7 +19,7 @@
       } catch(e) {}
     })();
   </script>
-  <link rel="stylesheet" href="/static/css/styles.css?v=8.3">
+  <link rel="stylesheet" href="/static/css/styles.css?v=8.4">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -202,104 +202,125 @@
       </section>
     </div>
 
-    <!-- TAB 1: SYNTHESIZE (Unified Upload + Goal-Oriented Generation) -->
+    <!-- TAB 1: SYNTHESIZE (Streamlined Product Workflow) -->
     <div id="tab-synthesize" class="tab-content" role="tabpanel">
       <h2 class="section-title">🧬 Synthesize Data</h2>
-      <p class="section-subtitle">Upload your real dataset, select a generation goal, and produce privacy-preserving synthetic data in one seamless workflow.</p>
+      <p class="section-subtitle">Create a privacy-preserving synthetic version of your dataset.</p>
 
       <!-- STEP 1: Upload Dataset -->
       <div class="card">
-        <div class="card-title">1. Dataset Selection</div>
-        <div class="grid grid-2">
-          <div id="upload-zone" class="upload-zone">
-            <div class="upload-icon">📂</div>
-            <div class="upload-text">Drag & drop your <strong>CSV file</strong> here<br>or click to browse <span style="font-size:0.8rem;color:var(--text-muted)">(Max 50 MB)</span></div>
-            <input type="file" id="file-input" accept=".csv" aria-label="Upload CSV Dataset">
+        <div class="card-title">1. Upload Dataset</div>
+        
+        <div id="upload-zone" class="upload-zone">
+          <div class="upload-icon">📂</div>
+          <div class="upload-text">
+            Drag & drop your <strong>CSV file</strong> here or <span style="text-decoration:underline;color:var(--accent-blue)">click to browse</span>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px">Maximum file size: 50 MB</div>
           </div>
-          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:1.5rem;background:var(--bg-glass);border-radius:var(--radius);border:1px solid var(--border-glass)">
-            <div style="font-size:2.5rem;margin-bottom:0.6rem">🏥</div>
-            <h3 style="margin-bottom:0.3rem;font-size:1.05rem">Sample Healthcare Data</h3>
-            <p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:1.2rem">1,000 realistic clinical patient records with vitals, diagnoses, and risk factors</p>
-            <button class="btn btn-secondary" onclick="loadSampleData()">Load Sample Dataset</button>
-          </div>
+          <input type="file" id="file-input" accept=".csv" aria-label="Upload CSV Dataset">
         </div>
+
+        <div class="sample-data-action">
+          <span>or start with preloaded data:</span>
+          <button class="btn btn-secondary btn-sm" onclick="loadSampleData()">Use Sample Dataset</button>
+        </div>
+
         <div id="dataset-status"></div>
       </div>
 
-      <!-- STEP 2: Choose Generation Goal (Revealed/Active upon dataset selection) -->
+      <!-- STEP 2: Generation Configuration (Revealed upon dataset selection) -->
       <div id="generation-config-section" class="card" style="margin-top:1.5rem">
-        <div class="card-title">2. Choose Generation Goal</div>
-        <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem">Select how you want your synthetic data generated. SynthForge automatically configures optimal model architectures and differential privacy guarantees.</p>
+        <div class="card-title">2. What do you need?</div>
+        <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem">Choose the generation goal that matches your target application.</p>
 
         <!-- Generation Mode Selection Cards -->
-        <div class="mode-cards-container">
+        <div class="mode-cards-container" role="radiogroup" aria-label="Generation goal selection">
           <!-- Mode 1: Fast -->
-          <div class="mode-card selected" id="mode-card-fast" onclick="selectGenerationMode('fast')" tabindex="0" role="radio" aria-checked="true">
+          <div class="mode-card selected" id="mode-card-fast" onclick="selectGenerationMode('fast')" tabindex="0" role="radio" aria-checked="true" aria-label="Fast Generation">
             <div>
               <div class="mode-card-header">
                 <div class="mode-card-title">⚡ Fast Generation</div>
-                <span class="badge badge-info">Instant ~1s</span>
+                <span class="badge badge-info">RECOMMENDED FOR EXPLORATION</span>
               </div>
-              <div class="mode-card-desc">Generate synthetic data quickly for rapid prototyping, UI/UX testing, and exploratory analytics.</div>
+              <div style="font-weight:600;font-size:0.88rem;color:var(--text-primary);margin-bottom:0.3rem">Best for quick exploration, prototypes and testing.</div>
+              <div class="mode-card-desc">Generates synthetic data quickly while preserving important statistical patterns.</div>
               <ul class="mode-card-features">
                 <li><span>✓</span> Statistical Copula Distribution Modeling</li>
                 <li><span>✓</span> Preserves 1D distributions & linear correlations</li>
-                <li><span>✓</span> Built-in Differential Privacy Protection</li>
+                <li><span>✓</span> Built-in Gaussian Differential Privacy</li>
               </ul>
             </div>
-            <div class="mode-card-footer">Recommended for rapid prototyping and dashboard development.</div>
+            <div class="mode-card-footer">Instant ~1s execution • Ideal for rapid prototyping</div>
           </div>
 
           <!-- Mode 2: High-Fidelity -->
-          <div class="mode-card" id="mode-card-high" onclick="selectGenerationMode('high')" tabindex="0" role="radio" aria-checked="false">
+          <div class="mode-card" id="mode-card-high" onclick="selectGenerationMode('high')" tabindex="0" role="radio" aria-checked="false" aria-label="High-Fidelity Generation">
             <div>
               <div class="mode-card-header">
                 <div class="mode-card-title">🧠 High-Fidelity Generation</div>
-                <span class="badge badge-purple">Deep Learning</span>
+                <span class="badge badge-purple">BEST FOR ANALYSIS & ML</span>
               </div>
-              <div class="mode-card-desc">Preserve intricate multi-modal relationships and complex clinical interactions for ML training.</div>
+              <div style="font-weight:600;font-size:0.88rem;color:var(--text-primary);margin-bottom:0.3rem">Best for complex analysis and machine-learning workflows.</div>
+              <div class="mode-card-desc">Uses deeper generative modeling to better capture complex relationships in your data.</div>
               <ul class="mode-card-features">
                 <li><span>✓</span> Deep Variational Neural Generator (TVAE)</li>
                 <li><span>✓</span> Captures non-linear dependencies & rare clusters</li>
                 <li><span>✓</span> Optimized for downstream ML utility (TSTR)</li>
               </ul>
             </div>
-            <div class="mode-card-footer">Recommended for machine learning research and statistical modeling.</div>
+            <div class="mode-card-footer">Deep learning training • Ideal for machine learning research</div>
           </div>
         </div>
 
         <input type="hidden" id="gen-dataset-id">
         <input type="hidden" id="gen-selected-mode" value="fast">
 
-        <!-- Row Count Input -->
-        <div class="form-row" style="margin-top:1rem">
-          <div class="form-group">
-            <label class="form-label" for="gen-rows">Number of Rows to Generate (max 100,000)</label>
+        <!-- STEP 3: Output Size Input -->
+        <div style="margin-top:1.5rem">
+          <div class="card-title" style="font-size:1rem;margin-bottom:0.4rem">3. Output Size</div>
+          <div class="form-group" style="max-width:360px">
+            <label class="form-label" for="gen-rows">Number of synthetic records</label>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:6px">How many records should SynthForge generate? (max 100,000)</div>
             <input type="number" id="gen-rows" class="form-input" value="1000" min="10" max="100000">
           </div>
         </div>
 
+        <!-- Primary Action Button -->
+        <div style="margin-top:1.5rem">
+          <button id="btn-generate" class="btn btn-primary btn-lg" onclick="generateData()">
+            <span id="btn-generate-text">Generate Synthetic Data</span>
+            <span class="btn-arrow">→</span>
+          </button>
+        </div>
+
         <!-- Collapsible Advanced Technical Settings -->
-        <div class="accordion" id="gen-advanced-accordion">
+        <div class="accordion" id="gen-advanced-accordion" style="margin-top:2rem">
           <div class="accordion-header" onclick="toggleAccordion('gen-advanced-accordion')">
-            <span>⚙️ Advanced Settings (Model Override, Differential Privacy & Reproducibility)</span>
+            <div>
+              <span style="font-weight:600">⚙️ Advanced Settings</span>
+              <span style="font-size:0.8rem;color:var(--text-muted);margin-left:8px">(Optional controls for technical users)</span>
+            </div>
             <span class="accordion-icon">▼</span>
           </div>
           <div class="accordion-body">
+            <p style="font-size:0.82rem;color:var(--accent-cyan);margin-bottom:1.2rem;background:rgba(6,182,212,0.08);padding:8px 12px;border-radius:var(--radius-xs);border:1px solid rgba(6,182,212,0.2)">
+              ℹ️ Custom settings override the selected generation preset.
+            </p>
+
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label" for="gen-model">Model Architecture Override</label>
-                <select id="gen-model" class="form-select">
-                  <option value="statistical">Statistical Copula</option>
+                <label class="form-label" for="gen-model">Model Architecture</label>
+                <select id="gen-model" class="form-select" onchange="onModelArchitectureChange()">
+                  <option value="statistical">Statistical Copula (Fast)</option>
                   <option value="tvae">TVAE (Variational Autoencoder)</option>
                   <option value="ctgan">CTGAN (Conditional GAN)</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label class="form-label" for="gen-epochs">Training Epochs (Deep Models)</label>
+              <div class="form-group" id="adv-epochs-group">
+                <label class="form-label" for="gen-epochs">Training Epochs</label>
                 <input type="number" id="gen-epochs" class="form-input" value="50" min="1" max="200">
               </div>
-              <div class="form-group">
+              <div class="form-group" id="adv-batch-group">
                 <label class="form-label" for="gen-batch-size">Batch Size</label>
                 <input type="number" id="gen-batch-size" class="form-input" value="500" min="32" max="10000">
               </div>
@@ -309,15 +330,18 @@
 
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label" for="gen-epsilon">Privacy Budget (ε) — lower = more private</label>
+                <label class="form-label" for="gen-epsilon">Privacy Protection (ε)</label>
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px">Lower values provide stronger differential privacy</div>
                 <input type="number" id="gen-epsilon" class="form-input" value="1.0" min="0.01" max="100" step="0.1">
               </div>
               <div class="form-group">
-                <label class="form-label" for="gen-delta">δ (Delta)</label>
+                <label class="form-label" for="gen-delta">Delta (δ)</label>
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px">Relaxation parameter for (ε,δ)-DP</div>
                 <input type="number" id="gen-delta" class="form-input" value="0.00001" min="0.0000001" max="0.1" step="0.00001">
               </div>
               <div class="form-group">
                 <label class="form-label" for="gen-mechanism">DP Noise Mechanism</label>
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px">Mechanism used for noise addition</div>
                 <select id="gen-mechanism" class="form-select">
                   <option value="gaussian">Gaussian (ε,δ)-DP</option>
                   <option value="laplace">Laplace (ε)-DP</option>
@@ -327,7 +351,8 @@
 
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label" for="gen-seed">Deterministic Random Seed (Optional)</label>
+                <label class="form-label" for="gen-seed">Random Seed (Optional)</label>
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px">Use a fixed seed when you need reproducible results for testing or research</div>
                 <input type="number" id="gen-seed" class="form-input" placeholder="e.g. 42 (leave empty for true entropy)" min="0" max="4294967295">
               </div>
               <div class="form-group" style="display:flex;align-items:center;padding-top:1.5rem">
@@ -339,10 +364,6 @@
             </div>
           </div>
         </div>
-
-        <button id="btn-generate" class="btn btn-primary btn-lg" onclick="generateData()" style="margin-top:1.2rem;width:100%">
-          🚀 Generate Synthetic Data
-        </button>
       </div>
 
       <!-- Recent Jobs / History (Secondary) -->
@@ -401,7 +422,24 @@
   </main>
 </div>
 
-<!-- Loading Overlay -->
+<!-- Multi-step Generation Progress Overlay -->
+<div id="generation-progress-overlay" class="loading-overlay" style="display:none" role="dialog" aria-modal="true" aria-label="Generation Progress">
+  <div class="progress-modal-card">
+    <div class="spinner" style="margin:0 auto 1.2rem"></div>
+    <h3 class="progress-modal-title" id="progress-modal-title">Generating your synthetic dataset...</h3>
+    <p class="progress-modal-subtitle" id="progress-modal-subtitle">Applying Differential Privacy and synthesizing empirical distributions</p>
+    
+    <div class="progress-steps-list">
+      <div class="progress-step done" id="pstep-1"><span class="step-status-icon">✓</span> <span>Dataset analyzed & schema profiled</span></div>
+      <div class="progress-step done" id="pstep-2"><span class="step-status-icon">✓</span> <span>Generation configured</span></div>
+      <div class="progress-step active" id="pstep-3"><span class="step-status-icon">●</span> <span id="pstep-3-text">Creating synthetic records</span></div>
+      <div class="progress-step pending" id="pstep-4"><span class="step-status-icon">○</span> <span>Applying Differential Privacy protection</span></div>
+      <div class="progress-step pending" id="pstep-5"><span class="step-status-icon">○</span> <span>Preparing Quality Report</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Standard Loading Overlay -->
 <div id="loading-overlay" class="loading-overlay" style="display:none" role="dialog" aria-modal="true" aria-label="Loading">
   <div style="text-align:center">
     <div class="spinner"></div>
@@ -412,8 +450,8 @@
 <!-- Toast Container -->
 <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
 
-<script src="/static/js/api.js?v=8.3"></script>
-<script src="/static/js/charts.js?v=8.3"></script>
-<script src="/static/js/app.js?v=8.3"></script>
+<script src="/static/js/api.js?v=8.4"></script>
+<script src="/static/js/charts.js?v=8.4"></script>
+<script src="/static/js/app.js?v=8.4"></script>
 </body>
 </html>
