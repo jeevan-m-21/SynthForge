@@ -12,6 +12,51 @@ const state = {
   selectedMode: 'fast', // 'fast' | 'high'
 };
 
+// ── Theme Manager ──
+function initTheme() {
+  const savedPref = localStorage.getItem('synthforge-theme') || 'system';
+  applyTheme(savedPref, false);
+
+  // Bind theme button clicks
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.dataset.themeVal;
+      applyTheme(val, true);
+    });
+  });
+
+  // Listen for system theme changes if currently on system preference
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      const currentPref = localStorage.getItem('synthforge-theme') || 'system';
+      if (currentPref === 'system') {
+        applyTheme('system', false);
+      }
+    });
+  }
+}
+
+function applyTheme(preference, save = true) {
+  let resolved = preference;
+  if (preference === 'system') {
+    const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    resolved = isDark ? 'dark' : 'light';
+  }
+
+  document.documentElement.setAttribute('data-theme', resolved);
+  document.documentElement.setAttribute('data-theme-preference', preference);
+  if (save) {
+    localStorage.setItem('synthforge-theme', preference);
+  }
+
+  // Update theme button active states
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    const isActive = btn.dataset.themeVal === preference;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
+  });
+}
+
 // ── Navigation ──
 function switchTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(t => {
@@ -33,6 +78,9 @@ function switchTab(tabId) {
     activeTabBtn.classList.add('active');
     activeTabBtn.setAttribute('aria-selected', 'true');
   }
+
+  // Scroll to top when switching views
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 
   // Contextual loaders
   if (tabId === 'tab-privacy-threats') loadPrivacyBudget();
@@ -757,6 +805,9 @@ function retryJob(jobId) {
 
 // ── Application Initialization ──
 document.addEventListener('DOMContentLoaded', () => {
+  // Theme initialization
+  initTheme();
+
   // Tab navigation bindings
   document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.addEventListener('click', () => {

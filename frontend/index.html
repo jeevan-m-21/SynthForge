@@ -5,23 +5,54 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="SynthForge — Privacy-Preserving Synthetic Data Platform with Differential Privacy, Quality Evaluation, and Privacy Threat Analysis.">
   <title>SynthForge — Synthetic Data Platform</title>
-  <link rel="stylesheet" href="/static/css/styles.css">
+  <script>
+    // Early theme bootstrap to prevent flash of incorrect theme (FOUC)
+    (function() {
+      try {
+        var saved = localStorage.getItem('synthforge-theme') || 'system';
+        var theme = saved;
+        if (saved === 'system') {
+          theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.setAttribute('data-theme-preference', saved);
+      } catch(e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/css/styles.css?v=8.3">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 <div class="app-container">
   <!-- Header -->
   <header class="app-header">
-    <div class="logo">
+    <div class="logo" onclick="switchTab('tab-home')" role="button" tabindex="0" aria-label="SynthForge Home">
       <div class="logo-icon">🧬</div>
       <div class="logo-text"><span>Synth</span>Forge</div>
     </div>
-    <div class="header-badge">● System Online</div>
+    
+    <div class="header-actions">
+      <!-- Theme Switcher -->
+      <div class="theme-switcher" role="radiogroup" aria-label="Theme mode selection">
+        <button class="theme-btn" data-theme-val="light" role="radio" aria-checked="false" title="Light Theme" aria-label="Light Theme">
+          <span class="theme-icon">☀️</span> <span class="theme-label">Light</span>
+        </button>
+        <button class="theme-btn" data-theme-val="dark" role="radio" aria-checked="false" title="Dark Theme" aria-label="Dark Theme">
+          <span class="theme-icon">🌙</span> <span class="theme-label">Dark</span>
+        </button>
+        <button class="theme-btn active" data-theme-val="system" role="radio" aria-checked="true" title="Follow System Theme" aria-label="System Theme">
+          <span class="theme-icon">⚙️</span> <span class="theme-label">System</span>
+        </button>
+      </div>
+
+      <div class="header-badge">● System Online</div>
+    </div>
   </header>
 
-  <!-- Navigation (Streamlined 3 Primary Destinations) -->
+  <!-- Navigation (4 Clean Destinations) -->
   <nav class="nav-tabs" role="tablist" aria-label="Main Navigation">
-    <button class="nav-tab active" data-tab="tab-synthesize" role="tab" aria-selected="true"><span class="tab-icon">🧬</span> Synthesize</button>
+    <button class="nav-tab active" data-tab="tab-home" role="tab" aria-selected="true"><span class="tab-icon">🏠</span> Home</button>
+    <button class="nav-tab" data-tab="tab-synthesize" role="tab" aria-selected="false"><span class="tab-icon">🧬</span> Synthesize</button>
     <button class="nav-tab" data-tab="tab-quality" role="tab" aria-selected="false"><span class="tab-icon">📋</span> Quality Report</button>
     <button class="nav-tab" data-tab="tab-privacy-threats" role="tab" aria-selected="false"><span class="tab-icon">🛡️</span> Privacy & Threats</button>
   </nav>
@@ -29,8 +60,150 @@
   <!-- Main Content -->
   <main class="main-content">
 
+    <!-- TAB 0: HOME / LANDING PAGE -->
+    <div id="tab-home" class="tab-content active" role="tabpanel">
+      <!-- Hero Section -->
+      <section class="hero-section">
+        <div class="hero-content">
+          <div class="hero-badge">
+            <span>🛡️</span> Privacy-Preserving Synthetic Data Platform
+          </div>
+          <h1 class="hero-title">Generate synthetic data.<br><span class="gradient-text">Validate it. Trust it.</span></h1>
+          <p class="hero-subtitle">
+            SynthForge creates privacy-preserving synthetic datasets that retain useful statistical and analytical characteristics of real data without exposing the original records.
+          </p>
+          <div class="hero-actions">
+            <button class="btn btn-primary btn-lg" onclick="switchTab('tab-synthesize')" id="hero-btn-cta">
+              <span>Generate Synthetic Data</span>
+              <span class="btn-arrow">→</span>
+            </button>
+            <a href="#how-it-works" class="btn btn-secondary btn-lg" id="hero-btn-explore">
+              <span>Explore How It Works</span>
+              <span class="btn-arrow">↓</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Hero Metric Highlights -->
+        <div class="hero-highlights-grid">
+          <div class="highlight-card">
+            <div class="highlight-icon">🔐</div>
+            <div class="highlight-title">Differential Privacy</div>
+            <div class="highlight-desc">Mathematical privacy guarantees bounded by Gaussian DP mechanisms and query-budget tracking.</div>
+          </div>
+          <div class="highlight-card">
+            <div class="highlight-icon">📊</div>
+            <div class="highlight-title">5-Pillar Quality Audit</div>
+            <div class="highlight-desc">Automated evaluation across structural integrity, KS distribution conformity, and TSTR utility.</div>
+          </div>
+          <div class="highlight-card">
+            <div class="highlight-icon">🛡️</div>
+            <div class="highlight-title">Adversarial Defense</div>
+            <div class="highlight-desc">Empirical stress-testing against membership inference, re-identification, and exact row memorization.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: How It Works -->
+      <section id="how-it-works" class="landing-section">
+        <div class="section-header-center">
+          <span class="section-kicker">WORKFLOW PIPELINE</span>
+          <h2 class="landing-section-title">How It Works</h2>
+          <p class="landing-section-subtitle">A streamlined three-step workflow designed for rapid experimentation and rigorous verification.</p>
+        </div>
+
+        <div class="workflow-steps-grid">
+          <div class="workflow-step-card">
+            <div class="step-badge">01 — UPLOAD</div>
+            <div class="step-icon">📂</div>
+            <h3 class="step-title">Upload Dataset</h3>
+            <p class="step-desc">Upload your CSV or start with sample clinical data. SynthForge automatically profiles column types, moments, and schema attributes.</p>
+          </div>
+
+          <div class="workflow-step-card">
+            <div class="step-badge">02 — SYNTHESIZE</div>
+            <div class="step-icon">⚡</div>
+            <h3 class="step-title">Generate Records</h3>
+            <p class="step-desc">Choose Fast Generation for rapid prototyping or High-Fidelity Deep Learning (TVAE) for machine learning workflows, protected by Differential Privacy.</p>
+          </div>
+
+          <div class="workflow-step-card">
+            <div class="step-badge">03 — VALIDATE</div>
+            <div class="step-icon">📋</div>
+            <h3 class="step-title">Validate & Download</h3>
+            <p class="step-desc">Review empirical fidelity, ML utility benchmarks, and privacy protection in a unified 5-pillar Quality Report before downloading.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Why Synthetic Data -->
+      <section id="why-synthetic-data" class="landing-section">
+        <div class="section-header-center">
+          <span class="section-kicker">VALUE PROPOSITION</span>
+          <h2 class="landing-section-title">Why Synthetic Data?</h2>
+          <p class="landing-section-subtitle">
+            Real datasets often contain sensitive or regulated information that cannot be shared freely. Synthetic data provides a practical bridge for teams requiring realistic tabular data.
+          </p>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="value-card">
+            <div class="value-card-icon">🧪</div>
+            <div class="value-card-content">
+              <h3 class="value-card-title">Safe Experimentation & Prototyping</h3>
+              <p class="value-card-text">Develop UI mockups, test data pipelines, and prototype analytics systems without requesting access to sensitive, restricted databases.</p>
+            </div>
+          </div>
+
+          <div class="value-card">
+            <div class="value-card-icon">🤖</div>
+            <div class="value-card-content">
+              <h3 class="value-card-title">Machine Learning Development</h3>
+              <p class="value-card-text">Train models on synthetic datasets and benchmark generalizability using Train on Synthetic, Test on Real (TSTR) accuracy parity.</p>
+            </div>
+          </div>
+
+          <div class="value-card">
+            <div class="value-card-icon">🤝</div>
+            <div class="value-card-content">
+              <h3 class="value-card-title">Cross-Team Collaboration</h3>
+              <p class="value-card-text">Share representative tabular datasets across engineering teams, external audit vendors, and research partners with confidence.</p>
+            </div>
+          </div>
+
+          <div class="value-card">
+            <div class="value-card-icon">🛡️</div>
+            <div class="value-card-content">
+              <h3 class="value-card-title">Empirical Privacy Threat Defense</h3>
+              <p class="value-card-text">Stress-test generated records against membership inference, re-identification, and attribute disclosure attacks to prevent data leakage.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: About / Creator -->
+      <section id="about-synthforge" class="landing-section about-section">
+        <div class="about-card">
+          <div class="about-icon">🧬</div>
+          <div class="about-body">
+            <h3 class="about-title">Built with a focus on trustworthy synthetic data</h3>
+            <p class="about-text">
+              SynthForge brings synthetic data generation, privacy protection, statistical validation, and machine-learning utility into one practical workflow.
+            </p>
+            <div class="about-footer">
+              <span class="about-author">Created by <strong>Jeevan M.</strong></span>
+              <span class="about-divider">•</span>
+              <a href="https://github.com/jeevan-m-21/SynthForge" target="_blank" rel="noopener noreferrer" class="about-link">
+                <span>GitHub Repository</span> ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
     <!-- TAB 1: SYNTHESIZE (Unified Upload + Goal-Oriented Generation) -->
-    <div id="tab-synthesize" class="tab-content active" role="tabpanel">
+    <div id="tab-synthesize" class="tab-content" role="tabpanel">
       <h2 class="section-title">🧬 Synthesize Data</h2>
       <p class="section-subtitle">Upload your real dataset, select a generation goal, and produce privacy-preserving synthetic data in one seamless workflow.</p>
 
@@ -43,7 +216,7 @@
             <div class="upload-text">Drag & drop your <strong>CSV file</strong> here<br>or click to browse <span style="font-size:0.8rem;color:var(--text-muted)">(Max 50 MB)</span></div>
             <input type="file" id="file-input" accept=".csv" aria-label="Upload CSV Dataset">
           </div>
-          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:1.5rem;background:rgba(255,255,255,0.02);border-radius:var(--radius)">
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:1.5rem;background:var(--bg-glass);border-radius:var(--radius);border:1px solid var(--border-glass)">
             <div style="font-size:2.5rem;margin-bottom:0.6rem">🏥</div>
             <h3 style="margin-bottom:0.3rem;font-size:1.05rem">Sample Healthcare Data</h3>
             <p style="color:var(--text-secondary);font-size:0.82rem;margin-bottom:1.2rem">1,000 realistic clinical patient records with vitals, diagnoses, and risk factors</p>
@@ -106,7 +279,7 @@
           </div>
         </div>
 
-        <!-- Collapsible Advanced Technical Settings (Hidden by default for non-technical users) -->
+        <!-- Collapsible Advanced Technical Settings -->
         <div class="accordion" id="gen-advanced-accordion">
           <div class="accordion-header" onclick="toggleAccordion('gen-advanced-accordion')">
             <span>⚙️ Advanced Settings (Model Override, Differential Privacy & Reproducibility)</span>
@@ -239,8 +412,8 @@
 <!-- Toast Container -->
 <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
 
-<script src="/static/js/api.js?v=8.2"></script>
-<script src="/static/js/charts.js?v=8.2"></script>
-<script src="/static/js/app.js?v=8.2"></script>
+<script src="/static/js/api.js?v=8.3"></script>
+<script src="/static/js/charts.js?v=8.3"></script>
+<script src="/static/js/app.js?v=8.3"></script>
 </body>
 </html>
