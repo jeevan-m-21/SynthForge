@@ -1,5 +1,5 @@
 /**
- * SynthForge — API Client
+ * MediSynth.AI — API Client
  */
 const API_BASE = '/api';
 

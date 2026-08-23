@@ -1,5 +1,5 @@
 /**
- * SynthForge — Chart Utilities (Chart.js)
+ * MediSynth.AI — Chart Utilities (Chart.js)
  */
 const ChartColors = {
   blue: 'rgba(59,130,246,1)', blueBg: 'rgba(59,130,246,0.15)',

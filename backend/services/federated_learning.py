@@ -1,4 +1,4 @@
-﻿"""
+"""
 MediSynth.AI — Federated Learning Orchestrator
 Implements FedAvg for collaborative tabular synthetic data generation
 without sharing raw data.
@@ -414,8 +414,9 @@ class FederationManager:
         cls,
         federation_id: str,
         num_rows: int = 1000,
+        seed: Optional[int] = None,
     ) -> Tuple[pd.DataFrame, Dict]:
-        """Generate synthetic data from the global federated model."""
+        """Generate synthetic data from the global federated model with optional seed."""
         fed = cls._federations.get(federation_id)
         if not fed:
             raise ValueError(f"Federation {federation_id} not found")
@@ -424,13 +425,15 @@ class FederationManager:
 
         # Reconstruct generator from global parameters
         generator = _params_to_generator(fed.global_model)
-        synthetic_df = generator.sample(num_rows)
+        synthetic_df = generator.sample(num_rows, seed=seed)
 
         metadata = {
             "federation_id": federation_id,
             "num_hospitals": len(fed.hospitals),
             "rounds_completed": fed.rounds_completed,
             "num_rows": num_rows,
+            "seed": seed,
+            "reproducible_run": seed is not None,
             "hospitals": [
                 {"name": h.name, "records": h.num_records}
                 for h in fed.hospitals.values()

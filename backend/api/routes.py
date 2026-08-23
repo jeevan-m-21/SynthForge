@@ -1,7 +1,4 @@
-"""
-MediSynth.AI — API Routes
-All REST endpoints for the system.
-"""
+import asyncio
 import io
 import json
 import numpy as np
@@ -30,10 +27,39 @@ from backend.services.federated_learning import FederationManager
 from backend.models.database import (
     jobs_store, reports_store, save_report, datasets_store
 )
-from backend.utils.security import generate_job_id
-from backend.config import GENERATED_DIR
+from backend.utils.security import generate_job_id, sanitize_filename
+from backend.utils.logging_config import get_logger
+from backend.config import GENERATED_DIR, UPLOAD_DIR, MAX_UPLOAD_SIZE_MB, MAX_EXECUTION_TIMEOUT_SECONDS
 
+logger = get_logger("routes")
 router = APIRouter(prefix="/api")
+
+MAX_UPLOAD_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
+
+
+async def _read_upload_file(file: UploadFile) -> bytes:
+    """Read upload file in chunks to enforce MAX_UPLOAD_SIZE_MB and validate extension."""
+    raw_name = file.filename or ""
+    if not raw_name.lower().endswith(".csv"):
+        raise HTTPException(400, "Only CSV files are supported.")
+
+    chunk_size = 1024 * 1024  # 1MB chunk
+    chunks = []
+    total_size = 0
+
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > MAX_UPLOAD_BYTES:
+            raise HTTPException(413, f"File exceeds maximum allowed upload size of {MAX_UPLOAD_SIZE_MB}MB.")
+        chunks.append(chunk)
+
+    if total_size == 0:
+        raise HTTPException(400, "Uploaded file is empty.")
+
+    return b"".join(chunks)
 
 
 def sanitize(obj: Any) -> Any:
@@ -61,44 +87,47 @@ def sanitize(obj: Any) -> Any:
 @router.post("/data/upload")
 async def upload_data(file: UploadFile = File(...)):
     """Upload a CSV file for synthetic data generation."""
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(400, "Only CSV files are supported")
-
-    content = await file.read()
-    if len(content) == 0:
-        raise HTTPException(400, "Empty file")
+    content = await _read_upload_file(file)
 
     try:
         result = data_service.ingest_csv(content, file.filename)
         return sanitize({"status": "success", "data": result})
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(500, f"Failed to process file: {str(e)}")
+        logger.error(f"Upload processing failed: {e}", exc_info=True)
+        raise HTTPException(500, "Failed to process uploaded file.")
 
 
 @router.post("/data/profile")
 async def profile_data(file: UploadFile = File(...)):
     """Profile an uploaded CSV file and return DatasetProfile JSON without persisting raw data."""
-    if not file.filename or not file.filename.endswith(".csv"):
-        raise HTTPException(400, "Only CSV files are supported")
-
-    content = await file.read()
-    if len(content) == 0:
-        raise HTTPException(400, "Empty file")
+    content = await _read_upload_file(file)
 
     try:
         df = pd.read_csv(io.BytesIO(content))
+    except UnicodeDecodeError:
+        raise HTTPException(400, "Invalid file encoding. UTF-8 encoded CSV files are required.")
+    except pd.errors.EmptyDataError:
+        raise HTTPException(400, "Uploaded CSV contains no data.")
+    except pd.errors.ParserError:
+        raise HTTPException(400, "Malformed CSV format: unable to parse rows.")
     except Exception as e:
         raise HTTPException(400, f"Failed to parse CSV file: {str(e)}")
 
-    if df.empty or len(df.columns) == 0:
-        raise HTTPException(400, "CSV dataset contains no data or columns to profile")
+    if df.empty or len(df) == 0 or len(df.columns) == 0:
+        raise HTTPException(400, "CSV dataset contains no data rows or columns to profile.")
 
     try:
-        profile = profile_dataframe(df, dataset_name=file.filename)
+        safe_name = sanitize_filename(file.filename)
+        profile = profile_dataframe(df, dataset_name=safe_name)
         profile_dict = profile.model_dump() if hasattr(profile, "model_dump") else profile.dict()
         return sanitize({"status": "success", "data": profile_dict})
     except Exception as e:
-        raise HTTPException(500, f"Failed to profile dataset: {str(e)}")
+        logger.error(f"Profiling failed: {e}", exc_info=True)
+        raise HTTPException(500, "Failed to profile dataset.")
 
 
 @router.get("/data/list")
@@ -186,41 +215,66 @@ async def generate(req: GenerateRequest):
         raise HTTPException(404, f"Dataset {req.dataset_id} not found")
 
     try:
-        result = generate_synthetic_data(
-            dataset_id=req.dataset_id,
-            num_rows=req.num_rows,
-            model_type=req.model_type,
-            epochs=req.epochs,
-            batch_size=req.batch_size,
-            epsilon=req.epsilon,
-            delta=req.delta,
-            dp_mechanism=req.dp_mechanism,
-            apply_dp=req.apply_dp,
+        result = await asyncio.wait_for(
+            asyncio.to_thread(
+                generate_synthetic_data,
+                dataset_id=req.dataset_id,
+                num_rows=req.num_rows,
+                model_type=req.model_type,
+                epochs=req.epochs,
+                batch_size=req.batch_size,
+                epsilon=req.epsilon,
+                delta=req.delta,
+                dp_mechanism=req.dp_mechanism,
+                apply_dp=req.apply_dp,
+                seed=req.seed,
+            ),
+            timeout=MAX_EXECUTION_TIMEOUT_SECONDS,
         )
         return sanitize({"status": "success", "data": result})
+    except asyncio.TimeoutError:
+        logger.error(f"Generation timed out after {MAX_EXECUTION_TIMEOUT_SECONDS}s")
+        raise HTTPException(504, f"Generation timed out after {MAX_EXECUTION_TIMEOUT_SECONDS} seconds.")
     except ValueError as e:
         raise HTTPException(400, str(e))
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Generation failed: {e}", exc_info=True)
         raise HTTPException(500, f"Generation failed: {str(e)}")
 
 
 @router.get("/generate/download/{job_id}")
 async def download_synthetic(job_id: str):
     """Download generated synthetic data as CSV."""
-    job = jobs_store.get(job_id)
+    clean_job_id = sanitize_filename(job_id).replace(".csv", "")
+    job = jobs_store.get(clean_job_id) or jobs_store.get(job_id)
     if not job:
         raise HTTPException(404, f"Job {job_id} not found")
     if job.get("status") != "completed":
         raise HTTPException(400, "Job not completed yet")
 
-    filepath = Path(job["result"]["output_file"])
+    out_file = job.get("result", {}).get("output_file")
+    if not out_file:
+        raise HTTPException(404, "Output file not recorded in job")
+
+    filepath = Path(out_file).resolve()
+    gen_dir = GENERATED_DIR.resolve()
+
+    # Ensure filepath is strictly inside GENERATED_DIR
+    try:
+        filepath.relative_to(gen_dir)
+    except ValueError:
+        raise HTTPException(403, "Access denied: file outside generated directory")
+
     if not filepath.exists():
         raise HTTPException(404, "Output file not found")
 
+    out_name = sanitize_filename(job["result"].get("output_filename", "synthetic.csv"))
     return FileResponse(
         filepath,
         media_type="text/csv",
-        filename=job["result"]["output_filename"],
+        filename=out_name,
     )
 
 
@@ -274,7 +328,13 @@ async def validate_stat(req: ValidateStatisticalRequest):
     real_df = drop_identifier_columns(real_df)
     synth_df = drop_identifier_columns(synth_df)
 
-    result = validate_statistical(real_df, synth_df)
+    try:
+        result = await asyncio.wait_for(
+            asyncio.to_thread(validate_statistical, real_df, synth_df),
+            timeout=MAX_EXECUTION_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(504, f"Statistical validation timed out after {MAX_EXECUTION_TIMEOUT_SECONDS}s.")
 
     report_id = f"stat_{generate_job_id()}"
     save_report(report_id, "statistical", req.dataset_id, sanitize(result))
@@ -299,7 +359,13 @@ async def validate_ml(req: ValidateMLRequest):
     real_df = drop_identifier_columns(real_df)
     synth_df = drop_identifier_columns(synth_df)
 
-    result = validate_ml_utility(real_df, synth_df, req.target_column)
+    try:
+        result = await asyncio.wait_for(
+            asyncio.to_thread(validate_ml_utility, real_df, synth_df, req.target_column),
+            timeout=MAX_EXECUTION_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(504, f"ML validation timed out after {MAX_EXECUTION_TIMEOUT_SECONDS}s.")
 
     if "error" in result:
         raise HTTPException(400, result["error"])
@@ -327,7 +393,13 @@ async def simulate_attacks(req: AttackSimulationRequest):
     real_df = drop_identifier_columns(real_df)
     synth_df = drop_identifier_columns(synth_df)
 
-    result = run_all_attacks(real_df, synth_df)
+    try:
+        result = await asyncio.wait_for(
+            asyncio.to_thread(run_all_attacks, real_df, synth_df),
+            timeout=MAX_EXECUTION_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(504, f"Attack simulation timed out after {MAX_EXECUTION_TIMEOUT_SECONDS}s.")
 
     report_id = f"attack_{generate_job_id()}"
     save_report(report_id, "attack_simulation", req.dataset_id, sanitize(result))
@@ -366,14 +438,21 @@ async def validate_quality_report(req: ValidateQualityReportRequest):
     budget_state = PrivacyBudgetManager.get_budget(req.dataset_id)
     budget_dict = budget_state.to_dict() if budget_state else None
 
-    # Run unified quality evaluation
-    report = QualityEvaluator.evaluate(
-        real_df=real_df,
-        synth_df=synth_df,
-        target_column=req.target_column,
-        dp_metadata=dp_metadata,
-        budget_state=budget_dict,
-    )
+    try:
+        # Run unified quality evaluation in worker thread
+        report = await asyncio.wait_for(
+            asyncio.to_thread(
+                QualityEvaluator.evaluate,
+                real_df=real_df,
+                synth_df=synth_df,
+                target_column=req.target_column,
+                dp_metadata=dp_metadata,
+                budget_state=budget_dict,
+            ),
+            timeout=MAX_EXECUTION_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(504, f"Quality evaluation timed out after {MAX_EXECUTION_TIMEOUT_SECONDS}s.")
 
     report_id = f"qual_{generate_job_id()}"
     save_report(report_id, "quality_report", req.dataset_id, sanitize(report))
@@ -398,11 +477,21 @@ async def add_hospital(
     file: UploadFile = File(...),
 ):
     """Add a participant's data to a federation."""
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(400, "Only CSV files supported")
+    content = await _read_upload_file(file)
 
-    content = await file.read()
-    df = pd.read_csv(io.BytesIO(content))
+    try:
+        df = pd.read_csv(io.BytesIO(content))
+    except UnicodeDecodeError:
+        raise HTTPException(400, "Invalid file encoding. UTF-8 encoded CSV files are required.")
+    except pd.errors.EmptyDataError:
+        raise HTTPException(400, "Uploaded CSV contains no data.")
+    except pd.errors.ParserError:
+        raise HTTPException(400, "Malformed CSV format: unable to parse rows.")
+    except Exception as e:
+        raise HTTPException(400, f"Failed to parse CSV file: {str(e)}")
+
+    if df.empty or len(df) == 0 or len(df.columns) == 0:
+        raise HTTPException(400, "CSV dataset contains no data rows or columns.")
 
     # Drop identifier columns using centralized schema intelligence
     df = drop_identifier_columns(df)
@@ -415,29 +504,49 @@ async def add_hospital(
         return {"status": "success", "data": result}
     except ValueError as e:
         raise HTTPException(400, str(e))
+    except Exception as e:
+        logger.error(f"Failed to add participant to federation: {e}", exc_info=True)
+        raise HTTPException(500, "Failed to add participant data.")
 
 
 @router.post("/federated/train")
 async def federated_train(req: FederatedTrainRequest):
     """Run federated training across all federation participants."""
     try:
-        result = FederationManager.run_federated_training(
-            req.federation_id,
-            dp_epsilon=req.dp_epsilon,
-            dp_delta=req.dp_delta,
-            apply_dp_to_updates=req.apply_dp,
+        result = await asyncio.wait_for(
+            asyncio.to_thread(
+                FederationManager.run_federated_training,
+                req.federation_id,
+                dp_epsilon=req.dp_epsilon,
+                dp_delta=req.dp_delta,
+                apply_dp_to_updates=req.apply_dp,
+            ),
+            timeout=MAX_EXECUTION_TIMEOUT_SECONDS,
         )
         return {"status": "success", "data": result}
+    except asyncio.TimeoutError:
+        raise HTTPException(504, f"Federated training timed out after {MAX_EXECUTION_TIMEOUT_SECONDS}s.")
     except ValueError as e:
         raise HTTPException(400, str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Federated training failed: {e}", exc_info=True)
+        raise HTTPException(500, f"Federated training failed: {str(e)}")
 
 
 @router.post("/federated/generate")
 async def federated_generate(req: FederatedGenerateRequest):
     """Generate synthetic data from federated global model."""
     try:
-        synth_df, metadata = FederationManager.generate_from_federation(
-            req.federation_id, req.num_rows
+        synth_df, metadata = await asyncio.wait_for(
+            asyncio.to_thread(
+                FederationManager.generate_from_federation,
+                req.federation_id,
+                req.num_rows,
+                seed=req.seed,
+            ),
+            timeout=MAX_EXECUTION_TIMEOUT_SECONDS,
         )
         output_file = GENERATED_DIR / f"federated_{req.federation_id}.csv"
         synth_df.to_csv(output_file, index=False)
@@ -450,8 +559,15 @@ async def federated_generate(req: FederatedGenerateRequest):
                 "output_file": str(output_file),
             },
         })
+    except asyncio.TimeoutError:
+        raise HTTPException(504, f"Federated generation timed out after {MAX_EXECUTION_TIMEOUT_SECONDS}s.")
     except ValueError as e:
         raise HTTPException(400, str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Federated generation failed: {e}", exc_info=True)
+        raise HTTPException(500, f"Federated generation failed: {str(e)}")
 
 
 @router.get("/federated/list")

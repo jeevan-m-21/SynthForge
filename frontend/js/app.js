@@ -1,5 +1,5 @@
 /**
- * SynthForge — Main Application Controller (Phase 8 Streamlined UX)
+ * MediSynth.AI — Main Application
  */
 const state = {
   datasetId: null,
@@ -255,30 +255,21 @@ async function loadSampleData() {
 }
 
 function renderDatasetInfo(data) {
-  const el = document.getElementById('dataset-status');
-  if (!el) return;
-
-  el.innerHTML = `
-    <div class="dataset-summary-card">
-      <div class="dataset-summary-header">
-        <div class="dataset-summary-check">✓</div>
-        <div>
-          <div class="dataset-summary-filename">${data.filename}</div>
-          <div class="dataset-summary-meta">${data.num_rows.toLocaleString()} records · ${data.num_cols} attributes</div>
-        </div>
-      </div>
-      <div class="dataset-summary-ready">
-        ● Dataset successfully analyzed and ready for synthesis
-      </div>
-    </div>`;
-
-  const genIdInput = document.getElementById('gen-dataset-id');
-  if (genIdInput) genIdInput.value = data.dataset_id;
-
-  const genRowsInput = document.getElementById('gen-rows');
-  if (genRowsInput && data.num_rows) {
-    genRowsInput.value = Math.min(data.num_rows, 100000);
-  }
+  document.getElementById('dataset-status').innerHTML = `
+    <div class="grid grid-4">
+      <div class="stat-card"><div class="stat-label">Dataset</div><div class="stat-value blue">${data.filename.substring(0, 15)}</div></div>
+      <div class="stat-card"><div class="stat-label">Rows</div><div class="stat-value green">${data.num_rows.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="stat-label">Columns</div><div class="stat-value purple">${data.num_cols}</div></div>
+      <div class="stat-card"><div class="stat-label">ID</div><div class="stat-value blue" style="font-size:0.85rem">${data.dataset_id}</div></div>
+    </div>
+    <div class="card" style="margin-top:1rem"><div class="card-title">📋 Data Preview</div>
+    <div style="overflow-x:auto"><table class="data-table"><thead><tr>${data.columns.map(c => `<th>${c}</th>`).join('')}</tr></thead>
+    <tbody>${(data.preview || []).map(r => `<tr>${data.columns.map(c => `<td>${r[c] ?? ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>
+    <div class="card"><div class="card-title">📊 Column Types</div>
+    <div class="grid grid-4">${Object.entries(data.column_types).map(([k, v]) =>
+    `<div class="stat-card"><div class="stat-label">${k}</div><span class="badge badge-${v === 'numerical' ? 'info' : v === 'boolean' ? 'purple' : 'warning'}">${v}</span></div>`
+  ).join('')}</div></div>`;
+  document.getElementById('gen-dataset-id').value = data.dataset_id;
 }
 
 // ── Synthetic Data Generation (Goal-Oriented Flow) ──
@@ -444,170 +435,19 @@ function renderQualityReport(report) {
         </div>
       </div>
     </div>
-
-    <!-- Dual Dimension Scorecard: Fidelity vs. Privacy -->
-    <div class="grid grid-2" style="margin-top:1.5rem">
-      <!-- Dimension 1: Data Fidelity -->
-      <div class="card" style="border-top:4px solid var(--accent-blue)">
-        <div class="card-title">📊 Dimension 1: Data Fidelity</div>
-        <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem">Evaluates how faithfully the synthetic records preserve empirical clinical distributions, statistical moments, and multi-variable correlations.</p>
-        <div class="grid grid-2">
-          <div class="stat-card"><div class="stat-label">Fidelity Score</div><div class="stat-value blue">${s.data_fidelity_score ?? '-'}/100</div></div>
-          <div class="stat-card"><div class="stat-label">Fidelity Grade</div><div class="grade grade-${s.data_fidelity_grade || 'B'}">${s.data_fidelity_grade || '-'}</div></div>
-        </div>
-      </div>
-
-      <!-- Dimension 2: Privacy Protection -->
-      <div class="card" style="border-top:4px solid var(--accent-green)">
-        <div class="card-title">🔐 Dimension 2: Privacy Protection</div>
-        <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem">Evaluates empirical protection against Membership Inference, Re-Identification, Attribute Leakage, and exact training record collisions.</p>
-        <div class="grid grid-2">
-          <div class="stat-card"><div class="stat-label">Protection Score</div><div class="stat-value green">${s.privacy_protection_score ?? '-'}/100</div></div>
-          <div class="stat-card"><div class="stat-label">Privacy Grade</div><div class="grade grade-${s.privacy_protection_grade || 'A'}">${s.privacy_protection_grade || '-'}</div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 5-Pillar Score Summary -->
-    <div class="card" style="margin-top:1.5rem">
-      <div class="card-title">🏛️ 5-Pillar Trustworthiness Breakdown</div>
-      <div class="grid grid-3" style="margin-top:1rem">
-        <div class="pillar-card">
-          <div class="pillar-header">
-            <div class="pillar-title">1. Structural Fidelity</div>
-            <span class="badge badge-${structural.status === 'passed' ? 'success' : 'warning'}">${structural.status || 'passed'}</span>
-          </div>
-          <div class="pillar-score" style="color:var(--accent-blue)">${structural.score?.toFixed(1) ?? '-'}</div>
-          <p style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.4rem">Schema completeness & datatype match</p>
-        </div>
-
-        <div class="pillar-card">
-          <div class="pillar-header">
-            <div class="pillar-title">2. Statistical Fidelity</div>
-            <span class="badge badge-${statistical.status === 'passed' ? 'success' : 'warning'}">${statistical.status || 'passed'}</span>
-          </div>
-          <div class="pillar-score" style="color:var(--accent-cyan)">${statistical.score?.toFixed(1) ?? '-'}</div>
-          <p style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.4rem">KS distribution conformity & correlations</p>
-        </div>
-
-        <div class="pillar-card">
-          <div class="pillar-header">
-            <div class="pillar-title">3. Relationship Fidelity</div>
-            <span class="badge badge-${relationship.status === 'passed' ? 'success' : 'warning'}">${relationship.status || 'passed'}</span>
-          </div>
-          <div class="pillar-score" style="color:var(--accent-purple)">${relationship.score?.toFixed(1) ?? '-'}</div>
-          <p style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.4rem">Multi-variable covariance alignment</p>
-        </div>
-
-        <div class="pillar-card">
-          <div class="pillar-header">
-            <div class="pillar-title">4. ML Utility (TSTR)</div>
-            <span class="badge badge-${ml.status === 'passed' ? 'success' : 'warning'}">${ml.status || 'passed'}</span>
-          </div>
-          <div class="pillar-score" style="color:var(--accent-amber)">${ml.score?.toFixed(1) ?? '-'}</div>
-          <p style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.4rem">Train on Synth, Test on Real parity</p>
-        </div>
-
-        <div class="pillar-card">
-          <div class="pillar-header">
-            <div class="pillar-title">5. Privacy Protection</div>
-            <span class="badge badge-${privacy.status === 'passed' ? 'success' : 'warning'}">${privacy.status || 'passed'}</span>
-          </div>
-          <div class="pillar-score" style="color:var(--accent-green)">${privacy.privacy_protection_score?.toFixed(1) ?? '-'}</div>
-          <p style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.4rem">MIA defense & zero collisions</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- TECHNICAL DEEP-DIVE ACCORDIONS -->
-
-    <!-- Accordion 1: Statistical Fidelity Details -->
-    <div class="accordion" id="acc-stat-details" style="margin-top:1.5rem">
-      <div class="accordion-header" onclick="toggleAccordion('acc-stat-details')">
-        <span style="font-size:0.95rem;font-weight:700">📊 Statistical Fidelity & Distribution Analysis</span>
-        <span class="accordion-icon">▼</span>
-      </div>
-      <div class="accordion-body">
-        <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem">
-          <strong>What this measures:</strong> How closely synthetic values follow the empirical probability distributions and correlations found in the original clinical data.
-        </p>
-
-        ${statistical.column_reports ? `
-        <div class="table-responsive">
-          <table class="data-table">
-            <thead><tr><th>Attribute</th><th>Type</th><th>KS / Chi2 Statistic</th><th>P-Value</th><th>Distribution Match</th><th>Quality</th></tr></thead>
-            <tbody>${Object.entries(statistical.column_reports || {}).map(([col, r]) => {
-              const test = r.ks_test || r.chi_squared || {};
-              return `<tr><td>${col}</td><td><span class="badge badge-${r.type === 'numerical' ? 'info' : 'warning'}">${r.type}</span></td>
-              <td>${test.statistic?.toFixed(4) ?? '-'}</td><td>${test.p_value?.toFixed(4) ?? '-'}</td>
-              <td>${test.similar ? '<span class="badge badge-success">Match</span>' : '<span class="badge badge-danger">Divergent</span>'}</td>
-              <td>${r.quality_score?.toFixed(1) ?? '-'}</td></tr>`;
-            }).join('')}</tbody>
-          </table>
-        </div>` : '<p style="color:var(--text-muted)">No per-column statistical metrics available.</p>'}
-
-        ${statistical.correlation?.columns?.length > 1 ? `
-        <div class="grid grid-2" style="margin-top:1rem">
-          <div class="card"><div class="card-title">🔵 Real Correlation Matrix</div><div id="qr-heatmap-real" class="heatmap-container"></div></div>
-          <div class="card"><div class="card-title">🟣 Synthetic Correlation Matrix</div><div id="qr-heatmap-synth" class="heatmap-container"></div></div>
-        </div>` : ''}
-
-        <div class="grid grid-2" id="qr-dist-charts-container" style="margin-top:1rem"></div>
-      </div>
-    </div>
-
-    <!-- Accordion 2: ML Utility (TSTR) Details -->
-    <div class="accordion" id="acc-ml-details">
-      <div class="accordion-header" onclick="toggleAccordion('acc-ml-details')">
-        <span style="font-size:0.95rem;font-weight:700">🤖 Machine Learning Utility (TSTR Benchmark)</span>
-        <span class="accordion-icon">▼</span>
-      </div>
-      <div class="accordion-body">
-        <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem">
-          <strong>What this measures:</strong> Can predictive ML models trained exclusively on synthetic data generalize effectively when tested on holdout real patients?
-          (<strong>TSTR</strong> = Train on Synthetic, Test on Real vs. <strong>TRTR</strong> = Train on Real, Test on Real).
-        </p>
-
-        ${ml.results ? `
-        <div class="table-responsive">
-          <table class="data-table">
-            <thead><tr><th>Metric</th><th>Real Baseline (RF)</th><th>Synthetic Trained (RF)</th><th>Real Baseline (GB)</th><th>Synthetic Trained (GB)</th></tr></thead>
-            <tbody>
-              ${['accuracy', 'f1_score', 'roc_auc', 'precision', 'recall'].map(m => `<tr><td><strong>${m.toUpperCase()}</strong></td>
-                <td>${ml.results.trtr_rf?.[m] ?? '-'}</td><td>${ml.results.tstr_rf?.[m] ?? '-'}</td>
-                <td>${ml.results.trtr_gb?.[m] ?? '-'}</td><td>${ml.results.tstr_gb?.[m] ?? '-'}</td></tr>`).join('')}
-            </tbody>
-          </table>
-        </div>
-        <div class="grid grid-2" style="margin-top:1rem">
-          <div class="card"><div class="card-title">📊 ML Performance Parity</div><div class="chart-container"><canvas id="qr-ml-bar"></canvas></div></div>
-          <div class="card"><div class="card-title">📈 ROC Curve (TSTR)</div><div class="chart-container"><canvas id="qr-ml-roc"></canvas></div></div>
-        </div>` : '<p style="color:var(--text-muted)">No ML utility validation benchmark results available for this run.</p>'}
-      </div>
-    </div>
-
-    <!-- Accordion 3: Structural & Privacy Details -->
-    <div class="accordion" id="acc-struct-details">
-      <div class="accordion-header" onclick="toggleAccordion('acc-struct-details')">
-        <span style="font-size:0.95rem;font-weight:700">🏛️ Structural Integrity & Collision Defense</span>
-        <span class="accordion-icon">▼</span>
-      </div>
-      <div class="accordion-body">
-        <div class="grid grid-3">
-          <div class="stat-card"><div class="stat-label">Columns Preserved</div><div class="stat-value green">${(structural.metrics?.column_preservation_rate * 100)?.toFixed(0) ?? 100}%</div></div>
-          <div class="stat-card"><div class="stat-label">Exact Record Collisions</div><div class="stat-value ${privacy.metrics?.exact_duplicate_count === 0 ? 'green' : 'red'}">${privacy.metrics?.exact_duplicate_count ?? 0}</div></div>
-          <div class="stat-card"><div class="stat-label">Covariance Alignment</div><div class="stat-value purple">${(relationship.metrics?.covariance_similarity * 100)?.toFixed(0) ?? '-'}%</div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Findings & Warnings -->
-    ${warnings.length ? `
-    <div class="card" style="margin-top:1.5rem">
-      <div class="card-title">⚠️ Quality & Privacy Findings (${warnings.length})</div>
-      <ul style="padding-left:1.5rem;color:var(--text-secondary);font-size:0.85rem;margin-top:0.5rem">
-        ${warnings.map(w => `<li style="margin-bottom:0.4rem">${w}</li>`).join('')}
-      </ul>
+    <div class="card" style="margin-top:1rem"><div class="card-title">📊 Per-Column KS Test</div>
+    <table class="data-table"><thead><tr><th>Column</th><th>Type</th><th>KS / χ² Statistic</th><th>P-Value</th><th>Similar?</th><th>Score</th></tr></thead>
+    <tbody>${Object.entries(data.column_reports).map(([col, r]) => {
+    const test = r.ks_test || r.chi_squared || {};
+    return `<tr><td>${col}</td><td><span class="badge badge-${r.type === 'numerical' ? 'info' : 'warning'}">${r.type}</span></td>
+      <td>${test.statistic?.toFixed(4) ?? '-'}</td><td>${test.p_value?.toFixed(4) ?? '-'}</td>
+      <td>${test.similar ? '<span class="badge badge-success">Yes</span>' : '<span class="badge badge-danger">No</span>'}</td>
+      <td>${r.quality_score?.toFixed(1)}</td></tr>`;
+  }).join('')}</tbody></table></div>
+    ${data.correlation?.columns?.length > 1 ? `
+    <div class="grid grid-2">
+      <div class="card"><div class="card-title">🔵 Real Correlation</div><div id="heatmap-real" class="heatmap-container"></div></div>
+      <div class="card"><div class="card-title">🟣 Synthetic Correlation</div><div id="heatmap-synth" class="heatmap-container"></div></div>
     </div>` : ''}
 
     <div class="card" style="margin-top:1rem;background:rgba(255,255,255,0.02)">
@@ -793,32 +633,19 @@ async function loadJobHistory() {
       return;
     }
 
-    container.innerHTML = `
-      <div class="card">
-        <div class="card-title" style="font-size:0.95rem">📜 Recent Generation Jobs</div>
-        <div class="table-responsive">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Status</th>
-                <th>Model</th>
-                <th>Rows</th>
-                <th>DP ε</th>
-                <th>Reproducibility</th>
-                <th>Time</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${jobs.map(j => {
-                const statusBadge = getStatusBadge(j.status);
-                const params = j.params || {};
-                const model = (params.model_type || j.result?.model_type || 'statistical').toUpperCase();
-                const rows = (params.num_rows || j.result?.num_rows_generated || 0).toLocaleString();
-                const eps = params.epsilon ?? (j.result?.dp_metadata?.epsilon_actual ?? '-');
-                const isRepro = params.seed !== undefined || j.result?.reproducible_run;
-                const reproHtml = isRepro ? `<span class="badge badge-reproducible">Seed: ${params.seed ?? j.result?.seed}</span>` : '<span style="color:var(--text-muted)">-</span>';
-                const created = j.created_at ? new Date(j.created_at).toLocaleTimeString() : '-';
+async function federatedGenerate() {
+  if (!state.federationId) return;
+  showLoading('Generating from federated model...');
+  try {
+    const rows = parseInt(document.getElementById('fed-gen-rows').value) || 1000;
+    const res = await api.federatedGenerate({ federation_id: state.federationId, num_rows: rows });
+    toast(`Generated ${res.data.num_rows} federated synthetic rows`);
+    document.getElementById('fed-gen-result').innerHTML = `<div class="card"><div class="card-title">✅ Generated ${res.data.num_rows} rows from ${res.data.num_hospitals} hospitals</div>
+      <table class="data-table"><thead><tr>${Object.keys(res.data.preview[0] || {}).map(k => `<th>${k}</th>`).join('')}</tr></thead>
+      <tbody>${res.data.preview.map(r => `<tr>${Object.values(r).map(v => `<td>${typeof v === 'number' ? v.toFixed?.(2) ?? v : v}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  } catch (e) { toast(e.message, 'error'); }
+  hideLoading();
+}
 
                 let actionHtml = '-';
                 if (j.status === 'completed' && j.id) {

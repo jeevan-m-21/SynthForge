@@ -1,4 +1,4 @@
-﻿"""
+"""
 MediSynth.AI — Global Configuration
 """
 import os
@@ -21,11 +21,35 @@ for d in [DATA_DIR, UPLOAD_DIR, MODELS_DIR, GENERATED_DIR, REPORTS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 # ──────────────────────────────────────────────
-# Server
+# Server & CORS
 # ──────────────────────────────────────────────
 HOST = os.getenv("SYNTH_HOST", "127.0.0.1")
 PORT = int(os.getenv("SYNTH_PORT", "8000"))
 DEBUG = os.getenv("SYNTH_DEBUG", "true").lower() == "true"
+ENV = os.getenv("SYNTH_ENV", "development").lower()
+
+_raw_cors = os.getenv(
+    "SYNTH_CORS_ORIGINS",
+    "http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173",
+)
+CORS_ORIGINS = [orig.strip() for orig in _raw_cors.split(",") if orig.strip()]
+
+# ──────────────────────────────────────────────
+# Resource & Concurrency Limits (Phase 7B)
+# ──────────────────────────────────────────────
+MAX_SYNTH_ROWS = int(os.getenv("SYNTH_MAX_ROWS", "100000"))
+MAX_EPOCHS = int(os.getenv("SYNTH_MAX_EPOCHS", "200"))
+MAX_FL_ROUNDS = int(os.getenv("SYNTH_MAX_FL_ROUNDS", "20"))
+MAX_EXECUTION_TIMEOUT_SECONDS = int(os.getenv("SYNTH_MAX_TIMEOUT_SECONDS", "300"))
+MAX_ATTACK_SAMPLE_SIZE = int(os.getenv("SYNTH_MAX_ATTACK_SAMPLE_SIZE", "5000"))
+MAX_CAT_COLS_FOR_ASSOC = int(os.getenv("SYNTH_MAX_CAT_COLS_FOR_ASSOC", "30"))
+SYNTH_MAX_WORKERS = int(os.getenv("SYNTH_MAX_WORKERS", "4"))
+JOB_STALE_TIMEOUT_SECONDS = int(os.getenv("JOB_STALE_TIMEOUT_SECONDS", "600"))
+
+# ──────────────────────────────────────────────
+# Upload Limits
+# ──────────────────────────────────────────────
+MAX_UPLOAD_SIZE_MB = int(os.getenv("SYNTH_MAX_UPLOAD_SIZE_MB", "50"))
 
 # ──────────────────────────────────────────────
 # Differential Privacy Defaults
@@ -39,9 +63,9 @@ PRIVACY_WARNING_THRESHOLDS = [0.5, 0.75, 0.9]  # warn at 50%, 75%, 90%
 # Generator Defaults
 # ──────────────────────────────────────────────
 DEFAULT_MODEL_TYPE = "ctgan"  # ctgan | tvae | gaussian_copula
-DEFAULT_EPOCHS = 50
+DEFAULT_EPOCHS = min(50, MAX_EPOCHS)
 DEFAULT_BATCH_SIZE = 500
-DEFAULT_NUM_ROWS = 1000
+DEFAULT_NUM_ROWS = min(1000, MAX_SYNTH_ROWS)
 
 # ──────────────────────────────────────────────
 # ML Validation
@@ -60,5 +84,12 @@ FL_MIN_HOSPITALS = 2
 # ──────────────────────────────────────────────
 # Security
 # ──────────────────────────────────────────────
-ENCRYPTION_KEY = os.getenv("SYNTH_ENCRYPTION_KEY", "synth-health-guard-default-key-change-in-prod")
+_env_secret = os.getenv("SYNTH_ENCRYPTION_KEY")
+if _env_secret:
+    ENCRYPTION_KEY = _env_secret
+elif ENV in ["production", "prod"]:
+    raise RuntimeError("CRITICAL: SYNTH_ENCRYPTION_KEY environment variable must be set in production mode.")
+else:
+    ENCRYPTION_KEY = "synth-dev-key-local-only"
+
 HASH_ALGORITHM = "sha256"
