@@ -1,4 +1,4 @@
-﻿/* ============================================
+/* ============================================
    MediSynth.AI — Design System
    Premium dark glassmorphism dashboard
    ============================================ */
@@ -219,7 +219,7 @@ body::before {
 .upload-zone {
   border: 2px dashed var(--border-glass);
   border-radius: var(--radius);
-  padding: 3rem 2rem;
+  padding: 2.5rem 1.5rem;
   text-align: center;
   cursor: pointer;
   transition: var(--transition);
@@ -229,10 +229,90 @@ body::before {
   border-color: var(--accent-blue);
   background: rgba(59,130,246,0.05);
 }
-.upload-zone .upload-icon { font-size: 3rem; margin-bottom: 1rem; }
-.upload-zone .upload-text { font-size: 1rem; color: var(--text-secondary); }
+.upload-zone .upload-icon { font-size: 2.8rem; margin-bottom: 0.8rem; }
+.upload-zone .upload-text { font-size: 0.95rem; color: var(--text-secondary); }
 .upload-zone .upload-text strong { color: var(--accent-blue); }
 .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* Generation Mode Selection Cards */
+.mode-cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.2rem;
+  margin: 1rem 0 1.5rem;
+}
+.mode-card {
+  background: rgba(255,255,255,0.03);
+  border: 2px solid var(--border-glass);
+  border-radius: var(--radius);
+  padding: 1.4rem;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  user-select: none;
+}
+.mode-card:hover {
+  border-color: rgba(59,130,246,0.4);
+  background: rgba(255,255,255,0.05);
+  transform: translateY(-2px);
+}
+.mode-card:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+.mode-card.selected {
+  border-color: var(--accent-blue);
+  background: rgba(59,130,246,0.12);
+  box-shadow: 0 0 25px rgba(59,130,246,0.2);
+}
+.mode-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+.mode-card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mode-card.selected .mode-card-title {
+  color: #93c5fd;
+}
+.mode-card-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 1rem;
+}
+.mode-card-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.mode-card-features li {
+  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mode-card-features li span {
+  color: var(--accent-cyan);
+}
+.mode-card-footer {
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
 
 /* Tables */
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }

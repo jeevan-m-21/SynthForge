@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MediSynth.AI — API Client
  */
 const API_BASE = '/api';
@@ -44,6 +44,9 @@ const api = {
   async listBudgets() { return this._fetch('/privacy/budgets'); },
 
   // Validation
+  async getQualityReport(params) {
+    return this._fetch('/validate/quality-report', { method: 'POST', body: JSON.stringify(params) });
+  },
   async validateStatistical(params) {
     return this._fetch('/validate/statistical', { method: 'POST', body: JSON.stringify(params) });
   },
@@ -78,3 +81,8 @@ const api = {
   },
   async listFederations() { return this._fetch('/federated/list'); },
 };
+
+// Expose globally on window for robust cross-script accessibility
+if (typeof window !== 'undefined') {
+  window.api = api;
+}
