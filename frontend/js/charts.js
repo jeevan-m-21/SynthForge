@@ -10,17 +10,33 @@ const ChartColors = {
   red: 'rgba(239,68,68,1)', redBg: 'rgba(239,68,68,0.15)',
   pink: 'rgba(236,72,153,1)',
   textMuted: 'rgba(148,163,184,0.6)',
-  gridLine: 'rgba(255,255,255,0.05)',
+  gridLine: 'rgba(255,255,255,0.06)',
 };
 
-const defaultOpts = {
-  responsive: true, maintainAspectRatio: false,
-  plugins: { legend: { labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } } } },
-  scales: {
-    x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: ChartColors.gridLine } },
-    y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: ChartColors.gridLine } },
-  },
-};
+function getChartOpts() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const tickColor = isLight ? '#64748b' : '#94a3b8';
+  const gridColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)';
+  const labelColor = isLight ? '#334155' : '#94a3b8';
+
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          color: labelColor,
+          font: { family: 'Inter', size: 11, weight: '500' },
+        },
+      },
+    },
+    scales: {
+      x: { ticks: { color: tickColor, font: { size: 10 } }, grid: { color: gridColor } },
+      y: { ticks: { color: tickColor, font: { size: 10 } }, grid: { color: gridColor } },
+    },
+  };
+}
+
 
 const charts = {
   _instances: {},
@@ -38,6 +54,8 @@ const charts = {
   },
 
   distribution(canvasId, data, colName) {
+    const opts = getChartOpts();
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
     return this._create(canvasId, {
       type: 'bar',
       data: {
@@ -47,11 +65,19 @@ const charts = {
           { label: 'Synthetic', data: data.synth_counts, backgroundColor: ChartColors.purpleBg, borderColor: ChartColors.purple, borderWidth: 1 },
         ],
       },
-      options: { ...defaultOpts, plugins: { ...defaultOpts.plugins, title: { display: true, text: colName, color: '#f1f5f9', font: { size: 13 } } } },
+      options: {
+        ...opts,
+        plugins: {
+          ...opts.plugins,
+          title: { display: true, text: colName, color: isLight ? '#1e293b' : '#f1f5f9', font: { size: 13, weight: '600' } },
+        },
+      },
     });
   },
 
   categoricalDist(canvasId, data, colName) {
+    const opts = getChartOpts();
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
     return this._create(canvasId, {
       type: 'bar',
       data: {
@@ -61,11 +87,18 @@ const charts = {
           { label: 'Synthetic', data: data.synth_proportions, backgroundColor: ChartColors.purple },
         ],
       },
-      options: { ...defaultOpts, plugins: { ...defaultOpts.plugins, title: { display: true, text: colName, color: '#f1f5f9' } } },
+      options: {
+        ...opts,
+        plugins: {
+          ...opts.plugins,
+          title: { display: true, text: colName, color: isLight ? '#1e293b' : '#f1f5f9', font: { size: 13, weight: '600' } },
+        },
+      },
     });
   },
 
   comparisonBar(canvasId, labels, realScores, synthScores) {
+    const opts = getChartOpts();
     return this._create(canvasId, {
       type: 'bar',
       data: {
@@ -75,11 +108,20 @@ const charts = {
           { label: 'Train on Synthetic', data: synthScores, backgroundColor: ChartColors.cyan, borderRadius: 4 },
         ],
       },
-      options: { ...defaultOpts, scales: { ...defaultOpts.scales, y: { ...defaultOpts.scales.y, min: 0, max: 1 } } },
+      options: {
+        ...opts,
+        scales: {
+          ...opts.scales,
+          y: { ...opts.scales.y, min: 0, max: 1 },
+        },
+      },
     });
   },
 
   rocCurve(canvasId, fpr, tpr, label) {
+    const opts = getChartOpts();
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const axisTitleColor = isLight ? '#475569' : '#94a3b8';
     return this._create(canvasId, {
       type: 'line',
       data: {
@@ -90,16 +132,20 @@ const charts = {
         ],
       },
       options: {
-        ...defaultOpts,
+        ...opts,
         scales: {
-          x: { ...defaultOpts.scales.x, title: { display: true, text: 'FPR', color: '#94a3b8' } },
-          y: { ...defaultOpts.scales.y, title: { display: true, text: 'TPR', color: '#94a3b8' } },
+          x: { ...opts.scales.x, title: { display: true, text: 'FPR', color: axisTitleColor } },
+          y: { ...opts.scales.y, title: { display: true, text: 'TPR', color: axisTitleColor } },
         },
       },
     });
   },
 
   radar(canvasId, labels, values) {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const tickColor = isLight ? '#64748b' : '#94a3b8';
+    const gridColor = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)';
+    const labelColor = isLight ? '#334155' : '#94a3b8';
     return this._create(canvasId, {
       type: 'radar',
       data: {
@@ -111,7 +157,14 @@ const charts = {
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        scales: { r: { beginAtZero: true, max: 100, ticks: { color: '#64748b', backdropColor: 'transparent' }, grid: { color: ChartColors.gridLine }, pointLabels: { color: '#94a3b8', font: { size: 11 } } } },
+        scales: {
+          r: {
+            beginAtZero: true, max: 100,
+            ticks: { color: tickColor, backdropColor: 'transparent' },
+            grid: { color: gridColor },
+            pointLabels: { color: labelColor, font: { size: 11, weight: '500' } },
+          },
+        },
         plugins: { legend: { display: false } },
       },
     });

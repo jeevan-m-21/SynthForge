@@ -156,6 +156,7 @@
             <div class="form-group" style="display:flex;align-items:flex-end">
               <button class="btn btn-primary" onclick="runMLValidation()">Run ML Validation</button>
             </div>
+            <div class="mode-card-footer">Deep learning training • Ideal for machine learning research</div>
           </div>
         </div>
         <div id="ml-results" style="margin-top:1.5rem"></div>
@@ -230,6 +231,95 @@
                 <button class="btn btn-success" onclick="federatedGenerate()">Generate</button>
               </div>
             </div>
+
+            <div class="divider"></div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="gen-epsilon">Privacy Protection (ε)</label>
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px">Lower values provide stronger differential privacy</div>
+                <input type="number" id="gen-epsilon" class="form-input" value="1.0" min="0.01" max="100" step="0.1">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="gen-delta">Delta (δ)</label>
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px">Relaxation parameter for (ε,δ)-DP</div>
+                <input type="number" id="gen-delta" class="form-input" value="0.00001" min="0.0000001" max="0.1" step="0.00001">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="gen-mechanism">DP Noise Mechanism</label>
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px">Mechanism used for noise addition</div>
+                <select id="gen-mechanism" class="form-select">
+                  <option value="gaussian">Gaussian (ε,δ)-DP</option>
+                  <option value="laplace">Laplace (ε)-DP</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="gen-seed">Random Seed (Optional)</label>
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px">Use a fixed seed when you need reproducible results for testing or research</div>
+                <input type="number" id="gen-seed" class="form-input" placeholder="e.g. 42 (leave empty for true entropy)" min="0" max="4294967295">
+              </div>
+              <div class="form-group" style="display:flex;align-items:center;padding-top:1.5rem">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                  <input type="checkbox" id="gen-apply-dp" checked style="width:18px;height:18px;accent-color:var(--accent-blue)">
+                  <span class="form-label" style="margin:0">Apply Differential Privacy</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Jobs / History (Secondary) -->
+      <div id="recent-jobs-section" style="margin-top:1.5rem"></div>
+    </div>
+
+    <!-- TAB 2: QUALITY REPORT (Primary Post-Generation Destination) -->
+    <div id="tab-quality" class="tab-content" role="tabpanel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:1rem">
+        <div>
+          <h2 class="section-title" style="margin:0">📋 Unified Quality & Trustworthiness Report</h2>
+          <p class="section-subtitle" style="margin:0.2rem 0 0">Dual-dimension evaluation independently assessing Data Fidelity and Privacy Protection.</p>
+        </div>
+        <button id="btn-re-evaluate" class="btn btn-secondary btn-sm" onclick="runQualityEvaluation()">🔄 Refresh Evaluation</button>
+      </div>
+
+      <div id="quality-results">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <p>No synthetic dataset evaluated yet. Upload data and generate synthetic records in the <strong>Synthesize</strong> tab.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: PRIVACY & THREATS (Security Testing + Differential Privacy Budget) -->
+    <div id="tab-privacy-threats" class="tab-content" role="tabpanel">
+      <h2 class="section-title">🛡️ Privacy & Threat Analysis</h2>
+      <p class="section-subtitle">Empirical privacy attack simulation suite and cumulative Differential Privacy budget tracking.</p>
+
+      <!-- Differential Privacy Budget Section -->
+      <div id="privacy-budget-section" class="card">
+        <div class="card-title">🔐 Differential Privacy Budget Allocation</div>
+        <div id="privacy-content">
+          <div class="empty-state"><div class="empty-icon">🔐</div><p>Upload a dataset and generate synthetic data to view cumulative privacy budget consumption.</p></div>
+        </div>
+      </div>
+
+      <!-- Privacy Attack Simulation Section -->
+      <div class="card" style="margin-top:1.5rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:1rem">
+          <div>
+            <div class="card-title" style="margin:0">🛡️ Empirical Privacy Attack Suite</div>
+            <p style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.2rem">Simulate adversarial attacks against synthetic data to verify resistance against re-identification and attribute leakage.</p>
+          </div>
+          <button id="btn-run-attacks" class="btn btn-danger" onclick="runAttacks()">🛡️ Run Privacy Attack Suite</button>
+        </div>
+        <div id="attack-results">
+          <div class="empty-state">
+            <div class="empty-icon">🎯</div>
+            <p>Click "Run Privacy Attack Suite" to test synthetic data against Membership Inference, Re-Identification, and Attribute Inference threats.</p>
           </div>
           <div id="fed-gen-result"></div>
         </div>
