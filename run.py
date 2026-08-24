@@ -1,5 +1,5 @@
 """
-MediSynth.AI — One-Command Startup
+SynthForge — One-Command Startup
 """
 import subprocess
 import sys
@@ -12,8 +12,8 @@ def main():
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     print("\n" + "=" * 60)
-    print("  MediSynth.AI -- Starting Up")
-    print("  Privacy-Preserving Synthetic Data Platform")
+    print("  SynthForge -- Starting Up")
+    print("  Privacy-Preserving Synthetic Tabular Data Platform")
     print("=" * 60 + "\n")
 
     # Install dependencies

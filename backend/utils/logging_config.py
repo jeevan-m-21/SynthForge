@@ -1,5 +1,5 @@
 """
-MediSynth.AI — Structured Logging
+SynthForge — Structured Logging
 """
 import logging
 import json
@@ -29,7 +29,7 @@ class JSONFormatter(logging.Formatter):
 
 def setup_logging(level=logging.INFO):
     """Configure application-wide logging."""
-    root_logger = logging.getLogger("MediSynth.AI")
+    root_logger = logging.getLogger("SynthForge")
     root_logger.setLevel(level)
 
     # Console handler with JSON formatting
@@ -42,7 +42,7 @@ def setup_logging(level=logging.INFO):
 
 def get_logger(name: str) -> logging.Logger:
     """Get a named logger instance."""
-    return logging.getLogger(f"MediSynth.AI.{name}")
+    return logging.getLogger(f"SynthForge.{name}")
 
 
 SENSITIVE_LOG_KEYS = {"encryption_key", "secret", "password", "token", "key", "auth", "raw_data"}

@@ -1,9 +1,11 @@
-"""End-to-end test for MediSynth.AI — all features."""
-import requests
+"""End-to-end test for SynthForge — all features."""
 import json
 import sys
 import time
+from pathlib import Path
+import requests
 
+ROOT_DIR = Path(__file__).resolve().parent
 BASE = "http://127.0.0.1:8000/api"
 PASS_COUNT = 0
 FAIL_COUNT = 0
@@ -20,7 +22,7 @@ def test(name, fn):
         print(f"  [FAIL] {name}: {e}")
         return None
 
-print("\n=== MediSynth.AI E2E Test ===\n")
+print("\n=== SynthForge E2E Test ===\n")
 
 # 1. Health
 test("Health check", lambda: (
@@ -130,7 +132,7 @@ if ds_id and job_id:
 
 # 9. Federated learning
 print("\n--- Federated Learning ---")
-sample_csv = r"C:\Users\jeeva\Downloads\synth-health-guard final\data\sample\healthcare_data.csv"
+sample_csv = ROOT_DIR / "data" / "sample" / "healthcare_data.csv"
 
 fed_res = test("Create federation", lambda: (
     requests.post(f"{BASE}/federated/create", json={"total_rounds": 3}).json()
