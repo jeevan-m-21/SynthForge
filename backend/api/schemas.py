@@ -1,5 +1,5 @@
 """
-MediSynth.AI — Pydantic Request/Response Schemas
+SynthForge — Pydantic Request/Response Schemas
 """
 from pydantic import BaseModel, Field
 from typing import Any, Dict, List, Optional

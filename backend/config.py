@@ -1,5 +1,5 @@
 """
-MediSynth.AI — Global Configuration
+SynthForge — Global Configuration
 """
 import os
 from pathlib import Path

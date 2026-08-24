@@ -14,6 +14,17 @@ const state = {
   selectedMode: 'fast', // 'fast' | 'high'
 };
 
+// ── Helper: Safe HTML Escaping ──
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // ── Theme Manager ──
 function initTheme() {
   const savedPref = localStorage.getItem('synthforge-theme') || 'system';
@@ -267,13 +278,17 @@ function renderDatasetInfo(data) {
   const el = document.getElementById('dataset-status');
   if (!el) return;
 
+  const safeFilename = escapeHtml(data.filename || 'Uploaded Dataset');
+  const safeRows = data.num_rows ? data.num_rows.toLocaleString() : '0';
+  const safeCols = data.num_cols != null ? escapeHtml(data.num_cols) : '0';
+
   el.innerHTML = `
     <div class="dataset-summary-card">
       <div class="dataset-summary-header">
         <div class="dataset-summary-check">✓</div>
         <div>
-          <div class="dataset-summary-filename">${data.filename}</div>
-          <div class="dataset-summary-meta">${data.num_rows.toLocaleString()} records · ${data.num_cols} attributes</div>
+          <div class="dataset-summary-filename">${safeFilename}</div>
+          <div class="dataset-summary-meta">${safeRows} records · ${safeCols} attributes</div>
         </div>
       </div>
       <div class="dataset-summary-ready">
@@ -456,9 +471,10 @@ function renderQualityReport(report) {
   let modelLabel = 'Statistical Copula (Fast)';
   if (gen.model_type === 'tvae') modelLabel = 'TVAE Neural Generator';
   else if (gen.model_type === 'ctgan') modelLabel = 'CTGAN Generator';
-  else if (gen.model_type) modelLabel = gen.model_type.toUpperCase();
+  else if (gen.model_type) modelLabel = String(gen.model_type).toUpperCase();
+  modelLabel = escapeHtml(modelLabel);
 
-  const sourceName = state.datasetInfo?.filename || 'Uploaded Dataset';
+  const sourceName = escapeHtml(state.datasetInfo?.filename || 'Uploaded Dataset');
   const sourceRows = state.datasetInfo?.num_rows ? state.datasetInfo.num_rows.toLocaleString() : '-';
 
   // Human-readable DP configuration
@@ -468,7 +484,7 @@ function renderQualityReport(report) {
     dpText = 'Differential Privacy: Disabled';
   } else if (dpMeta.epsilon_actual != null) {
     const mech = dpMeta.mechanism ? `${dpMeta.mechanism.charAt(0).toUpperCase() + dpMeta.mechanism.slice(1)} mechanism` : 'Gaussian mechanism';
-    dpText = `Differential Privacy: ε = ${dpMeta.epsilon_actual}${dpMeta.delta ? ` · δ = ${dpMeta.delta}` : ''} · ${mech}`;
+    dpText = `Differential Privacy: ε = ${escapeHtml(dpMeta.epsilon_actual)}${dpMeta.delta ? ` · δ = ${escapeHtml(dpMeta.delta)}` : ''} · ${escapeHtml(mech)}`;
   } else {
     dpText = 'Differential Privacy: Enabled (Bounded Gaussian DP)';
   }
@@ -545,7 +561,7 @@ function renderQualityReport(report) {
 
   // Reproducibility badge
   const isRepro = gen.reproducible_run || gen.seed !== undefined || state.lastGenResult?.seed !== undefined || (state.lastGenResult?.params && state.lastGenResult.params.seed !== undefined);
-  const seedVal = gen.seed !== undefined ? gen.seed : (state.lastGenResult?.seed ?? state.lastGenResult?.params?.seed ?? '42');
+  const seedVal = escapeHtml(gen.seed !== undefined ? gen.seed : (state.lastGenResult?.seed ?? state.lastGenResult?.params?.seed ?? '42'));
 
   el.innerHTML = `
     <!-- 1. Top Executive Banner with Primary Download Action -->

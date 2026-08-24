@@ -1,5 +1,5 @@
 """
-MediSynth.AI — Federated Learning Orchestrator
+SynthForge — Federated Learning Orchestrator
 Implements FedAvg for collaborative tabular synthetic data generation
 without sharing raw data.
 

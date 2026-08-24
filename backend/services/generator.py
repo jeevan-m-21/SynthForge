@@ -1,5 +1,5 @@
 """
-MediSynth.AI — Synthetic Data Generator
+SynthForge — Synthetic Data Generator
 Supports CTGAN, TVAE, and statistical fallback with DP noise integration.
 """
 import os

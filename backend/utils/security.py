@@ -1,5 +1,5 @@
 """
-MediSynth.AI — Security Utilities
+SynthForge — Security Utilities
 Encryption, hashing, and general data protection helpers.
 """
 import hashlib

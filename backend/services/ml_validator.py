@@ -1,5 +1,5 @@
-﻿"""
-MediSynth.AI — Machine Learning Utility Validation
+"""
+SynthForge — Machine Learning Utility Validation
 Demonstrates synthetic data utility via TSTR (Train on Synthetic, Test on Real).
 """
 import numpy as np

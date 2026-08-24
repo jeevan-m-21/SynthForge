@@ -1,5 +1,5 @@
 """
-MediSynth.AI — Differential Privacy Engine
+SynthForge — Differential Privacy Engine
 Implements Laplace/Gaussian mechanisms, RDP accounting, and privacy budget tracking.
 
 Mathematical Guarantees:

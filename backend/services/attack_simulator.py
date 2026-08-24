@@ -1,5 +1,5 @@
 """
-MediSynth.AI — Privacy Attack Simulation
+SynthForge — Privacy Attack Simulation
 Simulates membership inference, re-identification, and attribute inference attacks
 to validate privacy guarantees of synthetic data.
 """

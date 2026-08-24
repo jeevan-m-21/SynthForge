@@ -1,5 +1,5 @@
 """
-MediSynth.AI — Data Ingestion & Preprocessing Service
+SynthForge — Data Ingestion & Preprocessing Service
 Handles CSV upload, validation, metadata detection, and preprocessing.
 """
 import io

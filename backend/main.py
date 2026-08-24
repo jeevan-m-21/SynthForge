@@ -1,5 +1,5 @@
 """
-MediSynth.AI — FastAPI Application Entry Point
+SynthForge — FastAPI Application Entry Point
 Privacy-Preserving Synthetic Tabular Data Platform
 """
 from contextlib import asynccontextmanager
@@ -18,7 +18,7 @@ from backend.models.database import reconcile_stale_jobs
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown events."""
     logger = setup_logging()
-    logger.info("MediSynth.AI starting up...")
+    logger.info("SynthForge starting up...")
     try:
         reconciled = reconcile_stale_jobs()
         if reconciled:
@@ -26,11 +26,11 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Startup job reconciliation encountered an error: {e}", exc_info=True)
     yield
-    logger.info("MediSynth.AI shutting down...")
+    logger.info("SynthForge shutting down...")
 
 
 app = FastAPI(
-    title="MediSynth.AI",
+    title="SynthForge",
     description=(
         "Privacy-Preserving Synthetic Tabular Data Platform. "
         "Generate synthetic data with differential privacy, privacy analysis, "

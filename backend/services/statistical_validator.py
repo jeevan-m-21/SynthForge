@@ -1,5 +1,5 @@
-﻿"""
-MediSynth.AI — Statistical Similarity Validation
+"""
+SynthForge — Statistical Similarity Validation
 Proves synthetic data quality using KS test, mean/variance comparison,
 correlation matrix comparison, and chi-squared tests.
 """
