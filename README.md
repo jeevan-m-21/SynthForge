@@ -87,16 +87,16 @@ Download Dataset
 ## Product Showcase
 
 ### Dashboard
-<!-- Add screenshot here -->
+![alt text](image-3.png)
 
 ### Synthesis Workflow
-<!-- Add screenshot here -->
+![alt text](image-2.png)
 
 ### Quality Report
-<!-- Add screenshot here -->
+![alt text](image-1.png)
 
 ### Privacy & Threat Analysis
-<!-- Add screenshot here -->
+![alt text](image.png)
 
 ---
 
